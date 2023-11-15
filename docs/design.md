@@ -1,9 +1,28 @@
 # gameboy
 
+## DMG
+
 ## cpu - Sharp LR35902
 A custom microprocessor, which is a hybrid between the Intel 8080 and the Zilog Z80. 
 
+The clock frequency of this CPU is 4.194304 MHz
+Machine cycles take 4 cpu cycles
+
 I/O is memory mapped because of the limited needs in the Gameboy
+
+The gameboy has a 16-bit address bus, 0x0000 - 0xFFFF
+0000 - 3fff ~ 16Kb rom bank 00                 // From cartridge, usually a fixed bank
+4000 - 7fff ~ 16Kb rom bank 01~NN              // Switchable bank via memory mapper
+8000 - 9fff ~ 8kb video RAM
+a000 - bfff ~ 8kb external ram                 // From cartridge, switchable bank if any
+c000 - cfff ~ 4kb work RAM
+d000 - dfff ~ 4kb work RAM
+e000 - fdff ~ Mirror of c000 - ddff (ECHO RAM)
+fe00 - fe9f ~ Object attribute memory (OAM)
+fea0 - feff ~ Not usable area                  // free area lets gooooo
+ff00 - ff7f ~ I/O Registers
+ff80 - fffe ~ High RAM
+ffff - ffff ~ Interrupt enable register
 
 Hardware interrupts:
  - Devices can ask the cpu to interrupt, which would invoke an interrupt handler (a function pointer stored in the heap probably)
