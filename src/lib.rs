@@ -43,17 +43,24 @@ struct CPU {
 /// Listen for memory management orders from the CPU
 #[derive(Debug)]
 struct MMU {
-    memory: Vec<u8>, // allocate this at the start and use it like an arena
+    memory: Vec<u8>,
+    vram: Vec<u8>,
     cartridge: Vec<u8>,
 }
 
 impl MMU {
     fn read(&self, address: u16) -> u8 {
+        const VRAM_START: u16 = 0x8000;
+        const WRAM_START: u16 = 0xC000;
+
         match address {
-            0x0000..=0xDFFF => 1, // Cartridge RAM
-            0xE000..=0xFDFF => 0, // Echo RAM
+            0x0000..=0x7FFF => self.cartridge[address as usize],
+            0x8000..=0x9FFF => self.vram[(address - VRAM_START) as usize],
+            0xA000..=0xBFFF => 1, // Cartridge external RAM
+            0xC000..=0xDFFF => self.memory[(address - WRAM_START) as usize],
+            0xE000..=0xFDFF => 1, // Echo RAM
             0xFE00..=0xFE9F => 1, // Object attribute memory
-            0xFEA0..=0xFEFF => 0, // Not usable
+            0xFEA0..=0xFEFF => 1, // Not usable
             0xFF00..=0xFF7F => 1, // I/O registers
             0xFF80..=0xFFFE => 1, // High RAM
             0xFFFF => 1, // Interrupt enable register
@@ -74,7 +81,8 @@ fn load_boot_rom(mem: &mut Vec<u8>) -> std::io::Result<()> {
 
 pub fn its_a_gameboy() {
     let mut mmu = MMU {
-        memory: Vec::new(),
+        memory: Vec::with_capacity(RAM_SIZE), // Allocate arena for Gameboy address space
+        vram: Vec::new(),
         cartridge: Vec::new()
     };
     let cpu = CPU {

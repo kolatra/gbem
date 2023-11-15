@@ -2,6 +2,10 @@
 
 ## DMG
 
+goal:
+emulate a gameboy system.
+start with the cpu and memory.
+
 ## cpu - Sharp LR35902
 A custom microprocessor, which is a hybrid between the Intel 8080 and the Zilog Z80. 
 
