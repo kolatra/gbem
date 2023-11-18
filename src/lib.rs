@@ -1,19 +1,23 @@
 #![allow(unused)]
 
+use std::thread;
+use std::cell::{Cell, RefCell};
+use std::sync::{mpsc, Arc, RwLock};
 use std::fs;
 use std::ops::Range;
+use std::rc::Rc;
+use std::time::Duration;
 
 const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
 const MACHINE_FREQ: usize = 1048576; // 1.048576 MHz - 1/4 of the clock frequency
 const FPS: usize = 60;
 
 const RAM_SIZE: usize = 0x2000;
-const ADDRESS_SPACE: Range<u16> = 0x0000..0xFFFF;
 
 mod big_ass_arrays;
 pub use big_ass_arrays::*;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Registers {
     a: u8,
     f: u8,
@@ -29,7 +33,7 @@ pub struct Registers {
 }
 
 /// Decode and execute all instructions
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct CPU {
     registers: Registers,
 }
@@ -59,7 +63,8 @@ struct MMU {
     // https://gbdev.io/pandocs/Timer_and_Divider_Registers.html#ff04--div-divider-register
     divider_reg: u8,
     // https://gbdev.io/pandocs/Interrupts.html#ff0f--if-interrupt-flag
-    interrupts: Interrupts,
+    interrupt_enable: u8,
+    interrupt_flag: u8,
 }
 
 impl MMU {
@@ -80,19 +85,20 @@ impl MMU {
             0xFF05 => self.timer.counter,
             0xFF06 => self.timer.modulo,
             0xFF07 => self.timer.control,
-            0xFF0F => self.interrupts.flag,
+            0xFF0F => self.interrupt_flag,
             0xFF10..=0xFF26 => 1, // Sound control registers
             0xFF00..=0xFF7F => 1, // I/O registers
             0xFF80..=0xFFFE => 1, // High RAM
-            0xFFFF => self.interrupts.enable,
+            0xFFFF => self.interrupt_enable,
             _ => 0,
         }
     }
 }
 
 fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
-    let rom = "./DMG_ROM.bin";
+    let rom = "";
     let mut bytes = fs::read(rom)?;
+    bytes.append(&mut vec![0; 0x8000 - bytes.len()]); // Pad the ROM with zeroes for now
 
     let logo = &bytes[0x0104..0x0133];
     if logo != NINTENDO_HEADER {
@@ -115,7 +121,8 @@ pub fn its_a_gameboy() {
         timer: Timer::default(),
         joypad: 0,
         divider_reg: 0,
-        interrupts: Interrupts { enable: 0, flag: 0 },
+        interrupt_enable: 0,
+        interrupt_flag: 0,
     };
 
     let cpu = CPU {
@@ -123,4 +130,30 @@ pub fn its_a_gameboy() {
     };
 
     dbg!(load_rom(&mut mmu));
+
+    let (cpu_sender, cpu_receiver) = mpsc::channel::<CPU>();
+    let sender = cpu_sender.clone();
+    let _t_cpu = std::thread::spawn(move || {
+        loop {
+            sender.send(cpu.clone()).unwrap();
+            thread::sleep(Duration::from_millis(1000));
+        }
+    });
+
+    let (gfx_sender, gfx_receiver) = mpsc::channel::<u8>();
+    let sender = gfx_sender.clone();
+    let _t_gfx = std::thread::spawn(move || {
+        loop {
+            sender.send(1).unwrap();
+            thread::sleep(Duration::from_millis(1000));
+        }
+    });
+
+    loop {
+        let new_state = cpu_receiver.recv().unwrap();
+        println!("cpu tick, {:?}", new_state);
+
+        let new_state = gfx_receiver.recv().unwrap();
+        println!("gfx tick, {:?}", new_state);
+    }
 }
