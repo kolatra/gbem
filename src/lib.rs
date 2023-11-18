@@ -132,19 +132,17 @@ pub fn its_a_gameboy() {
     dbg!(load_rom(&mut mmu));
 
     let (cpu_sender, cpu_receiver) = mpsc::channel::<CPU>();
-    let sender = cpu_sender.clone();
     let _t_cpu = std::thread::spawn(move || {
         loop {
-            sender.send(cpu.clone()).unwrap();
+            cpu_sender.send(cpu.clone()).unwrap();
             thread::sleep(Duration::from_millis(1000));
         }
     });
 
     let (gfx_sender, gfx_receiver) = mpsc::channel::<u8>();
-    let sender = gfx_sender.clone();
     let _t_gfx = std::thread::spawn(move || {
         loop {
-            sender.send(1).unwrap();
+            gfx_sender.send(1).unwrap();
             thread::sleep(Duration::from_millis(1000));
         }
     });
