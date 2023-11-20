@@ -1,11 +1,7 @@
 #![allow(unused)]
-
-use std::thread;
-use std::cell::{Cell, RefCell};
-use std::sync::{mpsc, Arc, RwLock};
 use std::fs;
-use std::ops::Range;
-use std::rc::Rc;
+use std::sync::mpsc;
+use std::thread;
 use std::time::Duration;
 
 const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
@@ -44,18 +40,26 @@ pub const JUMP_VECTORS: [u8; 12] = [
     0x00, 0x08, 0x10, 0x20, 0x28, 0x30, 0x38, 0x40, 0x48, 0x50, 0x58, 0x60,
 ];
 
+#[derive(Debug, Clone, Copy)]
 enum CounterResult {
     Next,
     Advance(u8),
-    Pause
+    Pause,
 }
 
+#[derive(Debug, Clone)]
 struct Instruction {
     mnemonic: &'static str,
     opcode: u32,
     cycles: i8,
     length: i8,
-    handler: fn (mmu: &mut MMU, cpu: &mut CPU) -> CounterResult
+    handler: fn(cpu: &mut CPU) -> CounterResult,
+}
+
+impl Instruction {
+    fn run(&self, cpu: &mut CPU) -> CounterResult {
+        (self.handler)(cpu)
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -74,32 +78,76 @@ pub struct Registers {
 }
 
 /// Decode and execute all instructions
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default, Clone)]
 struct CPU {
     registers: Registers,
+    mmu: MMU,
 }
 
 impl CPU {
     fn reset(&mut self) {
         self.registers = Registers::default();
     }
+
+    fn add(&mut self, b: u8, use_carry: bool) {
+        // https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
+        let a = self.registers.a;
+        let c = use_carry as u8;
+        let h = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
+        let n = a.wrapping_add(b).wrapping_add(c);
+        
+        self.registers.f |= ((n == 0) as u8);
+        self.registers.f |= 0 << 1;
+        self.registers.f |= (h as u8) << 4;
+        self.registers.f |= (((a as u16) + (b as u16) + (c as u16) > 0xFF) as u8) >> 3;
+        self.registers.a = n;
+    }
+    
+
+    fn print_reg(&self) {
+        println!("Registers (hex):");
+        println!(
+            "A: {:#04x} F: {:#04x} B: {:#04x} C: {:#04x} D: {:#04x} E: {:#04x} H: {:#04x} L: {:#04x}",
+            self.registers.a,
+            self.registers.f,
+            self.registers.b,
+            self.registers.c,
+            self.registers.d,
+            self.registers.e,
+            self.registers.h,
+            self.registers.l
+        );
+
+        println!("Registers (bin):");
+        println!(
+            "A: {:#010b} F: {:#010b} B: {:#010b} C: {:#010b} D: {:#010b} E: {:#010b} H: {:#010b} L: {:#010b}",
+            self.registers.a,
+            self.registers.f,
+            self.registers.b,
+            self.registers.c,
+            self.registers.d,
+            self.registers.e,
+            self.registers.h,
+            self.registers.l
+        );
+    }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 struct Timer {
     counter: u8,
     modulo: u8,
     control: u8,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 struct Interrupts {
     enable: u8,
     flag: u8,
 }
 
 /// Listen for memory management orders from the CPU
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct MMU {
     w_ram: Vec<u8>, // Work RAM
     v_ram: Vec<u8>, // Video RAM
@@ -110,20 +158,34 @@ struct MMU {
     // https://gbdev.io/pandocs/Timer_and_Divider_Registers.html#ff04--div-divider-register
     divider_reg: u8,
     // https://gbdev.io/pandocs/Interrupts.html#ff0f--if-interrupt-flag
-    interrupt_enable: u8,
-    interrupt_flag: u8,
+    interrupts: Interrupts,
+}
+
+impl Default for MMU {
+    fn default() -> Self {
+        Self {
+            w_ram: Vec::with_capacity(RAM_SIZE),
+            v_ram: Vec::with_capacity(RAM_SIZE),
+            cartridge: Vec::with_capacity(MAX_ROM_SIZE),
+            timer: Timer::default(),
+            joypad: 0,
+            divider_reg: 0,
+            interrupts: Interrupts::default(),
+        }
+    }
 }
 
 impl MMU {
     fn read(&self, address: u16) -> u8 {
-        const VRAM_START: u16 = 0x8000;
-        const WRAM_START: u16 = 0xC000;
+        const VRAM_START: usize = 0x8000;
+        const WRAM_START: usize = 0xC000;
+        let address = address as usize;
 
         match address {
-            0x0000..=0x7FFF => self.cartridge[address as usize],
-            0x8000..=0x9FFF => self.v_ram[(address - VRAM_START) as usize],
+            0x0000..=0x7FFF => self.cartridge[address],
+            0x8000..=0x9FFF => self.v_ram[address - VRAM_START],
             0xA000..=0xBFFF => 1, // Cartridge external RAM
-            0xC000..=0xDFFF => self.w_ram[(address - WRAM_START) as usize],
+            0xC000..=0xDFFF => self.w_ram[address - WRAM_START],
             0xE000..=0xFDFF => 1, // Echo RAM
             0xFE00..=0xFE9F => 1, // Object attribute memory
             0xFEA0..=0xFEFF => 1, // Not usable
@@ -132,16 +194,22 @@ impl MMU {
             0xFF05 => self.timer.counter,
             0xFF06 => self.timer.modulo,
             0xFF07 => self.timer.control,
-            0xFF0F => self.interrupt_flag,
+            0xFF0F => self.interrupts.flag,
             0xFF10..=0xFF26 => 1, // Sound control registers
             0xFF00..=0xFF7F => 1, // I/O registers
             0xFF80..=0xFFFE => 1, // High RAM
-            0xFFFF => self.interrupt_enable,
+            0xFFFF => self.interrupts.enable,
             _ => 0,
         }
     }
+
+    fn read_word(&self, address: u16) -> u16 {
+        (self.read(address) | self.read(address + 1)) as u16
+    }
 }
 
+// https://meganesu.github.io/generate-gb-opcodes/
+// https://gekkio.fi/files/gb-docs/gbctr.pdf
 fn get_instructions() -> Vec<Instruction> {
     vec![
         Instruction {
@@ -149,48 +217,40 @@ fn get_instructions() -> Vec<Instruction> {
             opcode: 0x00,
             cycles: 1,
             length: 1,
-            handler: |_, _| { CounterResult::Next }
+            handler: |_| CounterResult::Next,
         },
-
         Instruction {
             mnemonic: "ADD A,B",
             opcode: 0x80,
             cycles: 1,
             length: 1,
-            handler: |mmu, cpu| {
-                let (n, overflow) = cpu.registers.a.overflowing_add(cpu.registers.b);
-                let mut res = 0;
-                res |= ((n == 0) as u8) >> 6;
-                res |= (overflow as u8) >> 4;
-                res |= (overflow as u8) >> 3;
-                cpu.registers.f = res;
+            handler: |cpu| {
+                cpu.add(cpu.registers.b, false);
                 CounterResult::Next
-            }
+            },
         },
-
         Instruction {
             mnemonic: "STOP",
             opcode: 0x1000,
             cycles: 1,
             length: 2,
-            handler: |_, _| {
+            handler: |_| {
                 // The system clock/oscillator stops until either:
-                // A reset 
+                // A reset
                 // Joypad input - resume execution at pc+1
                 CounterResult::Pause
-            }
+            },
         },
-
         Instruction {
             mnemonic: "HALT",
             opcode: 0x76,
             cycles: 1,
             length: 1,
-            handler: |_, _| {
+            handler: |_| {
                 // The clock stops but the oscillator and LCD controller continue to operate
                 // until an interrupt occurs.
                 CounterResult::Pause
-            }
+            },
         },
     ]
 }
@@ -199,13 +259,7 @@ fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
     let rom = "";
     let mut bytes = fs::read(rom)?;
 
-    if bytes.len() < 0x0133 {
-        println!("short ass ROM");
-        return Ok(())
-    }    
-
-    let logo = &bytes[0x0104..0x0133];
-    if logo != NINTENDO_HEADER {
+    if bytes.len() < 0x0133 || &bytes[0x0104..0x0133] != NINTENDO_HEADER {
         eprintln!("Invalid Gameboy ROM!");
     } else {
         println!("Loading ROM");
@@ -218,37 +272,21 @@ fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
 }
 
 pub fn its_a_gameboy() {
-    let mut mmu = MMU {
-        w_ram: Vec::with_capacity(RAM_SIZE),
-        v_ram: Vec::with_capacity(RAM_SIZE),
-        cartridge: Vec::with_capacity(MAX_ROM_SIZE),
-        timer: Timer::default(),
-        joypad: 0,
-        divider_reg: 0,
-        interrupt_enable: 0,
-        interrupt_flag: 0,
-    };
-
     let cpu = CPU {
         registers: Registers::default(),
+        mmu: MMU::default(),
     };
 
-    dbg!(load_rom(&mut mmu));
-
     let (cpu_sender, cpu_receiver) = mpsc::channel::<CPU>();
-    let _t_cpu = std::thread::spawn(move || {
-        loop {
-            cpu_sender.send(CPU::default()).unwrap();
-            thread::sleep(Duration::from_millis(1000));
-        }
+    let _t_cpu = std::thread::spawn(move || loop {
+        cpu_sender.send(cpu.clone()).unwrap();
+        thread::sleep(Duration::from_millis(1000));
     });
 
     let (gfx_sender, gfx_receiver) = mpsc::channel::<u8>();
-    let _t_gfx = std::thread::spawn(move || {
-        loop {
-            gfx_sender.send(1).unwrap();
-            thread::sleep(Duration::from_millis(1000));
-        }
+    let _t_gfx = std::thread::spawn(move || loop {
+        gfx_sender.send(1).unwrap();
+        thread::sleep(Duration::from_millis(1000));
     });
 
     loop {
@@ -261,5 +299,35 @@ pub fn its_a_gameboy() {
         if new_state == 0 {
             break;
         }
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        let mut cpu = CPU {
+            registers: Registers {
+                a: 62,
+                b: 34,
+                ..Registers::default()
+            },
+            mmu: MMU::default(),
+        };
+
+        let instructions = get_instructions();
+
+        let instruction = instructions
+            .iter()
+            .find(|i| i.mnemonic == "ADD A,B")
+            .unwrap();
+
+        instruction.run(&mut cpu);
+
+        assert_eq!(cpu.registers.a, 96);
+        assert_eq!(cpu.registers.f, 0b00010000);
     }
 }
