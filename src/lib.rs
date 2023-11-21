@@ -89,20 +89,33 @@ impl CPU {
         self.registers = Registers::default();
     }
 
-    fn add(&mut self, b: u8, use_carry: bool) {
-        // https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
-        let a = self.registers.a;
-        let c = use_carry as u8;
-        let h = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
-        let n = a.wrapping_add(b).wrapping_add(c);
-        
-        self.registers.f |= ((n == 0) as u8);
-        self.registers.f |= 0 << 1;
-        self.registers.f |= (h as u8) << 4;
-        self.registers.f |= (((a as u16) + (b as u16) + (c as u16) > 0xFF) as u8) >> 3;
-        self.registers.a = n;
+    fn set_flag(&mut self, bit: u8, value: bool) {
+        let mask = 1 << bit;
+        self.registers.f = (self.registers.f & !mask) | ((value as u8) << bit);
     }
-    
+
+    fn get_flag(&self, bit: u8) -> u8 {
+        let mask = 1 << bit;
+        self.registers.f & mask
+    }
+
+    /// https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
+    fn add(&mut self, b: u8, use_carry: bool) {
+        let a   = self.registers.a;
+        // TODO this might not be right
+        let c   = if use_carry { self.registers.f & 0x10 } else { 0 };
+        let hc  = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
+        let r   = a.wrapping_add(b).wrapping_add(c);
+        let a16 = a as u16;
+        let b16 = b as u16;
+        let c16 = c as u16;
+
+        self.set_flag(7, r == 0);
+        self.set_flag(6, false);
+        self.set_flag(5, hc);
+        self.set_flag(4, (a16 + b16 + c16) > 0xFF);
+        self.registers.a = r;
+    }
 
     fn print_reg(&self) {
         println!("Registers (hex):");
@@ -302,32 +315,41 @@ pub fn its_a_gameboy() {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_add() {
-        let mut cpu = CPU {
-            registers: Registers {
-                a: 62,
-                b: 34,
-                ..Registers::default()
-            },
-            mmu: MMU::default(),
-        };
-
+        let mut cpu = CPU::default();
         let instructions = get_instructions();
-
         let instruction = instructions
             .iter()
             .find(|i| i.mnemonic == "ADD A,B")
             .unwrap();
 
+        // Test half-carry flag
+        cpu.registers.a = 62;
+        cpu.registers.b = 34;
         instruction.run(&mut cpu);
 
         assert_eq!(cpu.registers.a, 96);
-        assert_eq!(cpu.registers.f, 0b00010000);
+        assert_eq!(cpu.get_flag(5), 0b0010_0000);
+
+        // Test zero flag
+        cpu.registers.a = 0;
+        cpu.registers.b = 0;
+
+        instruction.run(&mut cpu);
+
+        assert_eq!(cpu.get_flag(7), 0b1000_0000);
+
+        // Test carry flag
+        cpu.registers.a = 255;
+        cpu.registers.b = 5;
+
+        instruction.run(&mut cpu);
+
+        assert_eq!(cpu.get_flag(4), 0b0001_0000);
     }
 }
