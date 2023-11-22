@@ -102,7 +102,6 @@ impl CPU {
     /// https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
     fn add(&mut self, b: u8, use_carry: bool) {
         let a   = self.registers.a;
-        // TODO this might not be right
         let c   = if use_carry { self.registers.f & 0x10 } else { 0 };
         let hc  = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
         let r   = a.wrapping_add(b).wrapping_add(c);
@@ -328,6 +327,13 @@ mod test {
             .find(|i| i.mnemonic == "ADD A,B")
             .unwrap();
 
+        // Test zero flag
+        cpu.registers.a = 0;
+        cpu.registers.b = 0;
+        instruction.run(&mut cpu);
+
+        assert_eq!(cpu.get_flag(7), 0b1000_0000);
+
         // Test half-carry flag
         cpu.registers.a = 62;
         cpu.registers.b = 34;
@@ -336,18 +342,9 @@ mod test {
         assert_eq!(cpu.registers.a, 96);
         assert_eq!(cpu.get_flag(5), 0b0010_0000);
 
-        // Test zero flag
-        cpu.registers.a = 0;
-        cpu.registers.b = 0;
-
-        instruction.run(&mut cpu);
-
-        assert_eq!(cpu.get_flag(7), 0b1000_0000);
-
         // Test carry flag
         cpu.registers.a = 255;
         cpu.registers.b = 5;
-
         instruction.run(&mut cpu);
 
         assert_eq!(cpu.get_flag(4), 0b0001_0000);
