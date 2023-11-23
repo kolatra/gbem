@@ -41,7 +41,7 @@ pub const JUMP_VECTORS: [u8; 12] = [
 ];
 
 #[derive(Debug, Clone, Copy)]
-enum CounterResult {
+enum ProgramCounter {
     Next,
     Advance(u8),
     Pause,
@@ -53,13 +53,21 @@ struct Instruction {
     opcode: u32,
     cycles: i8,
     length: i8,
-    handler: fn(cpu: &mut CPU) -> CounterResult,
+    handler: fn(cpu: &mut CPU) -> ProgramCounter,
 }
 
 impl Instruction {
-    fn run(&self, cpu: &mut CPU) -> CounterResult {
+    fn run(&self, cpu: &mut CPU) -> ProgramCounter {
         (self.handler)(cpu)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Flag {
+    Z = 7,
+    N = 6,
+    H = 5,
+    C = 4,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -89,12 +97,14 @@ impl CPU {
         self.registers = Registers::default();
     }
 
-    fn set_flag(&mut self, bit: u8, value: bool) {
+    fn set_flag(&mut self, flag: Flag, value: bool) {
+        let bit = flag as u8;
         let mask = 1 << bit;
         self.registers.f = (self.registers.f & !mask) | ((value as u8) << bit);
     }
 
-    fn get_flag(&self, bit: u8) -> u8 {
+    fn get_flag(&self, flag: Flag) -> u8 {
+        let bit = flag as u8;
         let mask = 1 << bit;
         self.registers.f & mask
     }
@@ -102,21 +112,41 @@ impl CPU {
     /// https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
     fn add(&mut self, b: u8, use_carry: bool) {
         let a   = self.registers.a;
-        let c   = if use_carry { self.registers.f & 0x10 } else { 0 };
+        let c   = if use_carry && self.get_flag(C) > 0 { 1 } else { 0 };
         let hc  = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
         let r   = a.wrapping_add(b).wrapping_add(c);
         let a16 = a as u16;
         let b16 = b as u16;
         let c16 = c as u16;
 
-        self.set_flag(7, r == 0);
-        self.set_flag(6, false);
-        self.set_flag(5, hc);
-        self.set_flag(4, (a16 + b16 + c16) > 0xFF);
+        use Flag::*;
+        self.set_flag(Z, r == 0);
+        self.set_flag(N, false);
+        self.set_flag(H, hc);
+        self.set_flag(C, (a16 + b16 + c16) > 0xFF);
+        self.registers.a = r;
+    }
+
+    fn sub(&mut self, b: u8, use_carry: bool) {
+        let a   = self.registers.a;
+        let c   = if use_carry { self.get_flag(C) } else { 0 };
+        let hc  = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
+        let r   = a.wrapping_sub(b).wrapping_sub(c);
+        let a16 = a as u16;
+        let b16 = b as u16;
+        let c16 = c as u16;
+
+        use Flag::*;
+        self.set_flag(Z, r == 0);
+        self.set_flag(N, true);
+        self.set_flag(H, hc);
+        let result = a16.checked_sub(b16).and_then(|b16| b16.checked_sub(c16));
+        self.set_flag(C, result.is_none());
         self.registers.a = r;
     }
 
     fn print_reg(&self) {
+        println!("[*]");
         println!("Registers (hex):");
         println!(
             "A: {:#04x} F: {:#04x} B: {:#04x} C: {:#04x} D: {:#04x} E: {:#04x} H: {:#04x} L: {:#04x}",
@@ -142,6 +172,7 @@ impl CPU {
             self.registers.h,
             self.registers.l
         );
+        println!("[*]");
     }
 }
 
@@ -216,7 +247,9 @@ impl MMU {
     }
 
     fn read_word(&self, address: u16) -> u16 {
-        (self.read(address) | self.read(address + 1)) as u16
+        let upper = self.read(address);
+        let lower = self.read(address + 1);
+        (upper as u16) << 8 | lower as u16
     }
 }
 
@@ -229,7 +262,7 @@ fn get_instructions() -> Vec<Instruction> {
             opcode: 0x00,
             cycles: 1,
             length: 1,
-            handler: |_| CounterResult::Next,
+            handler: |_| ProgramCounter::Next,
         },
         Instruction {
             mnemonic: "ADD A,B",
@@ -238,7 +271,17 @@ fn get_instructions() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 cpu.add(cpu.registers.b, false);
-                CounterResult::Next
+                ProgramCounter::Next
+            },
+        },
+        Instruction {
+            mnemonic: "SUB A,B",
+            opcode: 0x90,
+            cycles: 1,
+            length: 1,
+            handler: |cpu| {
+                cpu.sub(cpu.registers.b, false);
+                ProgramCounter::Next
             },
         },
         Instruction {
@@ -250,7 +293,7 @@ fn get_instructions() -> Vec<Instruction> {
                 // The system clock/oscillator stops until either:
                 // A reset
                 // Joypad input - resume execution at pc+1
-                CounterResult::Pause
+                ProgramCounter::Pause
             },
         },
         Instruction {
@@ -261,7 +304,7 @@ fn get_instructions() -> Vec<Instruction> {
             handler: |_| {
                 // The clock stops but the oscillator and LCD controller continue to operate
                 // until an interrupt occurs.
-                CounterResult::Pause
+                ProgramCounter::Pause
             },
         },
     ]
@@ -317,6 +360,7 @@ pub fn its_a_gameboy() {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Flag::*;
 
     #[test]
     fn test_add() {
@@ -332,7 +376,7 @@ mod test {
         cpu.registers.b = 0;
         instruction.run(&mut cpu);
 
-        assert_eq!(cpu.get_flag(7), 0b1000_0000);
+        assert_eq!(cpu.get_flag(Z), 0b1000_0000);
 
         // Test half-carry flag
         cpu.registers.a = 62;
@@ -340,13 +384,72 @@ mod test {
         instruction.run(&mut cpu);
 
         assert_eq!(cpu.registers.a, 96);
-        assert_eq!(cpu.get_flag(5), 0b0010_0000);
+        assert_eq!(cpu.get_flag(H), 0b0010_0000);
 
         // Test carry flag
         cpu.registers.a = 255;
         cpu.registers.b = 5;
         instruction.run(&mut cpu);
 
-        assert_eq!(cpu.get_flag(4), 0b0001_0000);
+        assert_eq!(cpu.get_flag(C), 0b0001_0000);
+    }
+
+    #[test]
+    fn test_sub() {
+        let mut cpu = CPU::default();
+        let instructions = get_instructions();
+        let instruction = instructions
+            .iter()
+            .find(|i| i.mnemonic == "SUB A,B")
+            .unwrap();
+
+        // Test zero flag
+        cpu.registers.a = 0;
+        cpu.registers.b = 0;
+        instruction.run(&mut cpu);
+
+        assert_eq!(cpu.get_flag(Z), 0b1000_0000);
+
+        // Test half-carry flag
+        cpu.registers.a = 62;
+        cpu.registers.b = 34;
+        instruction.run(&mut cpu);
+
+        assert_eq!(cpu.registers.a, 28);
+        assert_eq!(cpu.get_flag(H), 0b0010_0000);
+
+        // Test carry flag
+        cpu.registers.a = 0;
+        cpu.registers.b = 5;
+        instruction.run(&mut cpu);
+
+        assert_eq!(cpu.get_flag(C), 0b0001_0000);
+    }
+
+    #[test]
+    fn test_reads() {
+        let mut mmu = MMU::default();
+
+        mmu.cartridge = vec![0x00, 0x01, 0x02, 0x03];
+        mmu.v_ram = vec![0x04, 0x05, 0x06, 0x07];
+        mmu.w_ram = vec![0x08, 0x09, 0x0A, 0x0B];
+
+        assert_eq!(mmu.read(0x0000), 0x00);
+        assert_eq!(mmu.read(0x0001), 0x01);
+        assert_eq!(mmu.read(0x0002), 0x02);
+        assert_eq!(mmu.read(0x0003), 0x03);
+
+        assert_eq!(mmu.read(0x8000), 0x04);
+        assert_eq!(mmu.read(0x8001), 0x05);
+        assert_eq!(mmu.read(0x8002), 0x06);
+        assert_eq!(mmu.read(0x8003), 0x07);
+
+        assert_eq!(mmu.read(0xC000), 0x08);
+        assert_eq!(mmu.read(0xC001), 0x09);
+        assert_eq!(mmu.read(0xC002), 0x0A);
+        assert_eq!(mmu.read(0xC003), 0x0B);
+
+        assert_eq!(mmu.read_word(0x8000), 0x0405);
+        assert_eq!(mmu.read_word(0xC000), 0x0809);
     }
 }
