@@ -1,5 +1,6 @@
 #![allow(unused)]
 use std::fs;
+use std::io::ErrorKind::InvalidData;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -9,7 +10,7 @@ const MACHINE_FREQ: usize = 1048576; // 1.048576 MHz - 1/4 of the clock frequenc
 const FPS: usize = 60;
 
 const RAM_SIZE: usize = 0x2000;
-const MAX_ROM_SIZE: usize = 0x8000;
+const MAX_ROM_SIZE: usize = 0x8000; // Assumed from the region size in memory
 
 pub const NINTENDO_HEADER: [u8; 48] = [
     0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
@@ -70,7 +71,7 @@ enum Flag {
     C = 4,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Registers {
     a: u8,
     f: u8,
@@ -83,6 +84,29 @@ pub struct Registers {
 
     pc: u16,
     sp: u16,
+}
+
+impl Default for Registers {
+    fn default() -> Self {
+        Self {
+            a: 0x01,
+            // FIXME:
+            // If the header checksum is $00, 
+            // then the carry and half-carry flags are clear;
+            // otherwise, they are both set. 
+            // Always set the Z flag.
+            f: 0x80,
+            b: 0x00,
+            c: 0x13,
+            d: 0x00,
+            e: 0xD8,
+            h: 0x01,
+            l: 0x4D,
+
+            pc: 0x0100,
+            sp: 0xFFFE,
+        }
+    }
 }
 
 /// Decode and execute all instructions
@@ -192,9 +216,9 @@ struct Interrupts {
 /// Listen for memory management orders from the CPU
 #[derive(Debug, Clone)]
 struct MMU {
-    w_ram: Vec<u8>, // Work RAM
-    v_ram: Vec<u8>, // Video RAM
-    cartridge: Vec<u8>,
+    w_ram: [u8; RAM_SIZE], // Work RAM
+    v_ram: [u8; RAM_SIZE], // Video RAM
+    cartridge: [u8; MAX_ROM_SIZE],
     timer: Timer,
     // https://gbdev.io/pandocs/Joypad_Input.html#ff00--p1joyp-joypad
     joypad: u8,
@@ -207,9 +231,9 @@ struct MMU {
 impl Default for MMU {
     fn default() -> Self {
         Self {
-            w_ram: Vec::with_capacity(RAM_SIZE),
-            v_ram: Vec::with_capacity(RAM_SIZE),
-            cartridge: Vec::with_capacity(MAX_ROM_SIZE),
+            w_ram: [0; RAM_SIZE],
+            v_ram: [0; RAM_SIZE],
+            cartridge: [0; MAX_ROM_SIZE],
             timer: Timer::default(),
             joypad: 0,
             divider_reg: 0,
@@ -219,16 +243,18 @@ impl Default for MMU {
 }
 
 impl MMU {
+    const VRAM_START: usize = 0x8000;
+    const WRAM_START: usize = 0xC000;
+    const ERAM_START: usize = 0xE000;
+
     fn read(&self, address: u16) -> u8 {
-        const VRAM_START: usize = 0x8000;
-        const WRAM_START: usize = 0xC000;
         let address = address as usize;
 
         match address {
             0x0000..=0x7FFF => self.cartridge[address],
-            0x8000..=0x9FFF => self.v_ram[address - VRAM_START],
+            0x8000..=0x9FFF => self.v_ram[address - Self::VRAM_START],
             0xA000..=0xBFFF => 1, // Cartridge external RAM
-            0xC000..=0xDFFF => self.w_ram[address - WRAM_START],
+            0xC000..=0xDFFF => self.w_ram[address - Self::WRAM_START],
             0xE000..=0xFDFF => 1, // Echo RAM
             0xFE00..=0xFE9F => 1, // Object attribute memory
             0xFEA0..=0xFEFF => 1, // Not usable
@@ -246,10 +272,42 @@ impl MMU {
         }
     }
 
+    fn write(&mut self, address: u16, value: u8) {
+        let address = address as usize;
+
+        match address {
+            0x0000..=0x7FFF => self.cartridge[address] = value,
+            0x8000..=0x9FFF => self.v_ram[address - Self::VRAM_START] = value,
+            0xA000..=0xBFFF => println!("Wrote {:x} to cartridge external RAM at {:x}", value, address),
+            0xC000..=0xDFFF => self.w_ram[address - Self::WRAM_START] = value,
+            0xE000..=0xFDFF => println!("Wrote {:x} to echo RAM at {:x}", value, address),
+            0xFE00..=0xFE9F => println!("Wrote {:x} to OAM at {:x}", value, address),
+            0xFEA0..=0xFEFF => println!("Tried to write into unusable memory at {:x}", address),
+            0xFF00 => self.joypad = value,
+            0xFF04 => self.divider_reg = value,
+            0xFF05 => self.timer.counter = value,
+            0xFF06 => self.timer.modulo = value,
+            0xFF07 => self.timer.control = value,
+            0xFF0F => self.interrupts.flag = value,
+            0xFF10..=0xFF26 => println!("Wrote {:x} to sound control registers at {:x}", value, address),
+            0xFF00..=0xFF7F => println!("Wrote {:x} to i/o registers at {:x}", value, address),
+            0xFF80..=0xFFFE => println!("Wrote {:x} to high RAM at {:x}", value, address),
+            0xFFFF => self.interrupts.enable = value,
+            _ => (),
+        }
+    }
+
     fn read_word(&self, address: u16) -> u16 {
         let upper = self.read(address);
         let lower = self.read(address + 1);
         (upper as u16) << 8 | lower as u16
+    }
+
+    fn write_word(&mut self, address: u16, value: u16) {
+        let upper = (value >> 8) as u8;
+        let lower = value as u8;
+        self.write(address, upper);
+        self.write(address + 1, lower);
     }
 }
 
@@ -315,13 +373,16 @@ fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
     let mut bytes = fs::read(rom)?;
 
     if bytes.len() < 0x0133 || &bytes[0x0104..0x0133] != NINTENDO_HEADER {
-        eprintln!("Invalid Gameboy ROM!");
-    } else {
-        println!("Loading ROM");
-        let mem = &mut mmu.cartridge;
-        mem.clear();
-        mem.append(&mut bytes);
+        return Err(std::io::Error::new(
+            InvalidData,
+            "Invalid ROM",
+        ));
     }
+
+    println!("Loading ROM");
+    let mem = &mut mmu.cartridge;
+    mem.iter_mut().for_each(|b| *b = 0);
+    mem[..bytes.len()].copy_from_slice(&bytes);
 
     Ok(())
 }
@@ -333,13 +394,13 @@ pub fn its_a_gameboy() {
     };
 
     let (cpu_sender, cpu_receiver) = mpsc::channel::<CPU>();
-    let _t_cpu = std::thread::spawn(move || loop {
+    let _t_cpu = thread::spawn(move || loop {
         cpu_sender.send(cpu.clone()).unwrap();
         thread::sleep(Duration::from_millis(1000));
     });
 
     let (gfx_sender, gfx_receiver) = mpsc::channel::<u8>();
-    let _t_gfx = std::thread::spawn(move || loop {
+    let _t_gfx = thread::spawn(move || loop {
         gfx_sender.send(1).unwrap();
         thread::sleep(Duration::from_millis(1000));
     });
@@ -427,29 +488,28 @@ mod test {
     }
 
     #[test]
-    fn test_reads() {
+    fn test_mmu() {
         let mut mmu = MMU::default();
 
-        mmu.cartridge = vec![0x00, 0x01, 0x02, 0x03];
-        mmu.v_ram = vec![0x04, 0x05, 0x06, 0x07];
-        mmu.w_ram = vec![0x08, 0x09, 0x0A, 0x0B];
+        mmu.cartridge = [0; MAX_ROM_SIZE];
+        mmu.write_word(0x0000, 0x0001);
+        mmu.write_word(0x0002, 0x0203);
 
-        assert_eq!(mmu.read(0x0000), 0x00);
-        assert_eq!(mmu.read(0x0001), 0x01);
-        assert_eq!(mmu.read(0x0002), 0x02);
-        assert_eq!(mmu.read(0x0003), 0x03);
+        mmu.v_ram = [0; RAM_SIZE];
+        mmu.write_word(0x8000, 0x0405);
+        mmu.write_word(0x8002, 0x0607);
 
-        assert_eq!(mmu.read(0x8000), 0x04);
-        assert_eq!(mmu.read(0x8001), 0x05);
-        assert_eq!(mmu.read(0x8002), 0x06);
-        assert_eq!(mmu.read(0x8003), 0x07);
+        mmu.w_ram = [0; RAM_SIZE];
+        mmu.write_word(0xC000, 0x0809);
+        mmu.write_word(0xC002, 0x0A0B);
 
-        assert_eq!(mmu.read(0xC000), 0x08);
-        assert_eq!(mmu.read(0xC001), 0x09);
-        assert_eq!(mmu.read(0xC002), 0x0A);
-        assert_eq!(mmu.read(0xC003), 0x0B);
+        assert_eq!(mmu.read_word(0x0000), 0x0001);
+        assert_eq!(mmu.read_word(0x0002), 0x0203);
 
         assert_eq!(mmu.read_word(0x8000), 0x0405);
+        assert_eq!(mmu.read_word(0x8002), 0x0607);
+
         assert_eq!(mmu.read_word(0xC000), 0x0809);
+        assert_eq!(mmu.read_word(0xC002), 0x0A0B);
     }
 }
