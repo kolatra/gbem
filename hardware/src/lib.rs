@@ -1,9 +1,14 @@
 #![allow(unused)]
 use std::fs;
 use std::io::ErrorKind::InvalidData;
-use std::sync::mpsc;
-use std::thread;
-use std::time::Duration;
+
+use tracing::{info, warn, debug};
+
+// Debug consts
+pub const SPAMMY_LOGS: bool = false;
+
+#[cfg(test)]
+mod tests;
 
 const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
 const MACHINE_FREQ: usize = 1048576; // 1.048576 MHz - 1/4 of the clock frequency
@@ -44,7 +49,7 @@ pub const JUMP_VECTORS: [u8; 12] = [
 #[derive(Debug, Clone, Copy)]
 enum ProgramCounter {
     Next,
-    Advance(u8),
+    Skip(u8),
     Pause,
 }
 
@@ -64,7 +69,7 @@ impl Instruction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Flag {
+enum FlagBit {
     Z = 7,
     N = 6,
     H = 5,
@@ -103,7 +108,7 @@ impl Default for Registers {
             h: 0x01,
             l: 0x4D,
 
-            pc: 0x0100,
+            pc: 0x0000,
             sp: 0xFFFE,
         }
     }
@@ -111,92 +116,124 @@ impl Default for Registers {
 
 /// Decode and execute all instructions
 #[derive(Debug, Default, Clone)]
-struct CPU {
-    registers: Registers,
-    mmu: MMU,
+pub struct CPU {
+    reg: Registers,
+    pub mmu: MMU,
 }
 
 impl CPU {
+    fn fetch(&self) -> u8 {
+        debug!("fetch");
+        debug!("pc: {:#04x}", self.reg.pc);
+        let pc = self.reg.pc;
+        let opcode = self.mmu.read(pc);
+        opcode
+    }
+
+    pub fn cycle(&mut self) {
+        debug!("Cycle");
+        let opcode = self.fetch();
+        debug!("opcode: {:#04x}", opcode);
+        let instructions = get_instructions();
+        let instruction = instructions
+            .iter()
+            .find(|i| i.opcode == opcode as u32);
+
+        debug!("{:?}", instruction);
+        let pc = match instruction {
+            Some(i) => i.run(self),
+            None => panic!("Unknown opcode: {:#04x}", opcode)
+        };
+
+        match pc {
+            ProgramCounter::Next => self.reg.pc += 2,
+            ProgramCounter::Skip(i) => self.reg.pc += self.reg.pc.checked_add(i.into()).unwrap_or(2),
+            ProgramCounter::Pause => (),
+        };
+
+        self.print_reg();
+    }
+
     fn reset(&mut self) {
-        self.registers = Registers::default();
+        self.reg = Registers::default();
     }
 
-    fn set_flag(&mut self, flag: Flag, value: bool) {
+    fn set_flag(&mut self, flag: FlagBit, value: bool) {
         let bit = flag as u8;
         let mask = 1 << bit;
-        self.registers.f = (self.registers.f & !mask) | ((value as u8) << bit);
+        self.reg.f = (self.reg.f & !mask) | ((value as u8) << bit);
     }
 
-    fn get_flag(&self, flag: Flag) -> u8 {
+    fn is_set(&self, flag: FlagBit) -> bool {
         let bit = flag as u8;
         let mask = 1 << bit;
-        self.registers.f & mask
+        self.reg.f & mask > 0
     }
 
     /// https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
     fn add(&mut self, b: u8, use_carry: bool) {
-        let a   = self.registers.a;
-        let c   = if use_carry && self.get_flag(C) > 0 { 1 } else { 0 };
+        let a   = self.reg.a;
+        let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
         let hc  = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
         let r   = a.wrapping_add(b).wrapping_add(c);
         let a16 = a as u16;
         let b16 = b as u16;
         let c16 = c as u16;
 
-        use Flag::*;
+        use FlagBit::*;
         self.set_flag(Z, r == 0);
         self.set_flag(N, false);
         self.set_flag(H, hc);
         self.set_flag(C, (a16 + b16 + c16) > 0xFF);
-        self.registers.a = r;
+        self.reg.a = r;
     }
 
     fn sub(&mut self, b: u8, use_carry: bool) {
-        let a   = self.registers.a;
-        let c   = if use_carry { self.get_flag(C) } else { 0 };
+        let a   = self.reg.a;
+        let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
         let hc  = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
         let r   = a.wrapping_sub(b).wrapping_sub(c);
         let a16 = a as u16;
         let b16 = b as u16;
         let c16 = c as u16;
 
-        use Flag::*;
+        use FlagBit::*;
         self.set_flag(Z, r == 0);
         self.set_flag(N, true);
         self.set_flag(H, hc);
         let result = a16.checked_sub(b16).and_then(|b16| b16.checked_sub(c16));
         self.set_flag(C, result.is_none());
-        self.registers.a = r;
+        self.reg.a = r;
     }
 
     fn print_reg(&self) {
-        println!("[*]");
-        println!("Registers (hex):");
-        println!(
+        info!("[*]");
+        info!("Registers (hex):");
+        info!(
             "A: {:#04x} F: {:#04x} B: {:#04x} C: {:#04x} D: {:#04x} E: {:#04x} H: {:#04x} L: {:#04x}",
-            self.registers.a,
-            self.registers.f,
-            self.registers.b,
-            self.registers.c,
-            self.registers.d,
-            self.registers.e,
-            self.registers.h,
-            self.registers.l
+            self.reg.a,
+            self.reg.f,
+            self.reg.b,
+            self.reg.c,
+            self.reg.d,
+            self.reg.e,
+            self.reg.h,
+            self.reg.l
         );
 
-        println!("Registers (bin):");
-        println!(
+        info!("Registers (bin):");
+        info!(
             "A: {:#010b} F: {:#010b} B: {:#010b} C: {:#010b} D: {:#010b} E: {:#010b} H: {:#010b} L: {:#010b}",
-            self.registers.a,
-            self.registers.f,
-            self.registers.b,
-            self.registers.c,
-            self.registers.d,
-            self.registers.e,
-            self.registers.h,
-            self.registers.l
+            self.reg.a,
+            self.reg.f,
+            self.reg.b,
+            self.reg.c,
+            self.reg.d,
+            self.reg.e,
+            self.reg.h,
+            self.reg.l
         );
-        println!("[*]");
+        info!("[*]");
     }
 }
 
@@ -213,12 +250,11 @@ struct Interrupts {
     flag: u8,
 }
 
-/// Listen for memory management orders from the CPU
 #[derive(Debug, Clone)]
-struct MMU {
+pub struct MMU {
     w_ram: [u8; RAM_SIZE], // Work RAM
     v_ram: [u8; RAM_SIZE], // Video RAM
-    cartridge: [u8; MAX_ROM_SIZE],
+    pub cartridge: [u8; MAX_ROM_SIZE],
     timer: Timer,
     // https://gbdev.io/pandocs/Joypad_Input.html#ff00--p1joyp-joypad
     joypad: u8,
@@ -249,6 +285,7 @@ impl MMU {
 
     fn read(&self, address: u16) -> u8 {
         let address = address as usize;
+        debug!("read: {:#04x}", address);
 
         match address {
             0x0000..=0x7FFF => self.cartridge[address],
@@ -278,22 +315,22 @@ impl MMU {
         match address {
             0x0000..=0x7FFF => self.cartridge[address] = value,
             0x8000..=0x9FFF => self.v_ram[address - Self::VRAM_START] = value,
-            0xA000..=0xBFFF => println!("Wrote {:x} to cartridge external RAM at {:x}", value, address),
+            0xA000..=0xBFFF => info!("Wrote {:x} to cartridge external RAM at {:x}", value, address),
             0xC000..=0xDFFF => self.w_ram[address - Self::WRAM_START] = value,
-            0xE000..=0xFDFF => println!("Wrote {:x} to echo RAM at {:x}", value, address),
-            0xFE00..=0xFE9F => println!("Wrote {:x} to OAM at {:x}", value, address),
-            0xFEA0..=0xFEFF => println!("Tried to write into unusable memory at {:x}", address),
+            0xE000..=0xFDFF => info!("Wrote {:x} to echo RAM at {:x}", value, address),
+            0xFE00..=0xFE9F => info!("Wrote {:x} to OAM at {:x}", value, address),
+            0xFEA0..=0xFEFF => warn!("Tried to write into unusable memory at {:x}", address),
             0xFF00 => self.joypad = value,
             0xFF04 => self.divider_reg = value,
             0xFF05 => self.timer.counter = value,
             0xFF06 => self.timer.modulo = value,
             0xFF07 => self.timer.control = value,
             0xFF0F => self.interrupts.flag = value,
-            0xFF10..=0xFF26 => println!("Wrote {:x} to sound control registers at {:x}", value, address),
-            0xFF00..=0xFF7F => println!("Wrote {:x} to i/o registers at {:x}", value, address),
-            0xFF80..=0xFFFE => println!("Wrote {:x} to high RAM at {:x}", value, address),
+            0xFF10..=0xFF26 => info!("Wrote {:x} to sound control registers at {:x}", value, address),
+            0xFF00..=0xFF7F => info!("Wrote {:x} to i/o registers at {:x}", value, address),
+            0xFF80..=0xFFFE => info!("Wrote {:x} to high RAM at {:x}", value, address),
             0xFFFF => self.interrupts.enable = value,
-            _ => (),
+            _ => warn!("Tried to write {:x} to {:x} (outside of address space)", value, address),
         }
     }
 
@@ -328,7 +365,7 @@ fn get_instructions() -> Vec<Instruction> {
             cycles: 1,
             length: 1,
             handler: |cpu| {
-                cpu.add(cpu.registers.b, false);
+                cpu.add(cpu.reg.b, false);
                 ProgramCounter::Next
             },
         },
@@ -338,7 +375,7 @@ fn get_instructions() -> Vec<Instruction> {
             cycles: 1,
             length: 1,
             handler: |cpu| {
-                cpu.sub(cpu.registers.b, false);
+                cpu.sub(cpu.reg.b, false);
                 ProgramCounter::Next
             },
         },
@@ -368,148 +405,25 @@ fn get_instructions() -> Vec<Instruction> {
     ]
 }
 
-fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
-    let rom = "";
-    let mut bytes = fs::read(rom)?;
+pub fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
+    // let rom = "SOME PATH";
+    // let mut bytes = fs::read(rom)?;
 
-    if bytes.len() < 0x0133 || &bytes[0x0104..0x0133] != NINTENDO_HEADER {
-        return Err(std::io::Error::new(
-            InvalidData,
-            "Invalid ROM",
-        ));
-    }
+    // if bytes.len() < 0x0133 || &bytes[0x0104..0x0133] != NINTENDO_HEADER {
+    //     return Err(std::io::Error::new(
+    //         InvalidData,
+    //         "Invalid ROM",
+    //     ));
+    // }
 
-    println!("Loading ROM");
     let mem = &mut mmu.cartridge;
-    mem.iter_mut().for_each(|b| *b = 0);
-    mem[..bytes.len()].copy_from_slice(&bytes);
+    info!("Loading boot ROM");
+    mem[..BOOT_ROM.len()].copy_from_slice(&BOOT_ROM);
+    info!("{:?}", &mem[..256]);
+
+    info!("Loading ROM");
+    // mem.iter_mut().for_each(|b| *b = 0);
+    // mem[..bytes.len()].copy_from_slice(&bytes);
 
     Ok(())
-}
-
-pub fn its_a_gameboy() {
-    let cpu = CPU {
-        registers: Registers::default(),
-        mmu: MMU::default(),
-    };
-
-    let (cpu_sender, cpu_receiver) = mpsc::channel::<CPU>();
-    let _t_cpu = thread::spawn(move || loop {
-        cpu_sender.send(cpu.clone()).unwrap();
-        thread::sleep(Duration::from_millis(1000));
-    });
-
-    let (gfx_sender, gfx_receiver) = mpsc::channel::<u8>();
-    let _t_gfx = thread::spawn(move || loop {
-        gfx_sender.send(1).unwrap();
-        thread::sleep(Duration::from_millis(1000));
-    });
-
-    loop {
-        let new_state = cpu_receiver.recv().unwrap();
-        dbg!(new_state);
-
-        let new_state = gfx_receiver.recv().unwrap();
-        dbg!(new_state);
-
-        if new_state == 0 {
-            break;
-        }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::Flag::*;
-
-    #[test]
-    fn test_add() {
-        let mut cpu = CPU::default();
-        let instructions = get_instructions();
-        let instruction = instructions
-            .iter()
-            .find(|i| i.mnemonic == "ADD A,B")
-            .unwrap();
-
-        // Test zero flag
-        cpu.registers.a = 0;
-        cpu.registers.b = 0;
-        instruction.run(&mut cpu);
-
-        assert_eq!(cpu.get_flag(Z), 0b1000_0000);
-
-        // Test half-carry flag
-        cpu.registers.a = 62;
-        cpu.registers.b = 34;
-        instruction.run(&mut cpu);
-
-        assert_eq!(cpu.registers.a, 96);
-        assert_eq!(cpu.get_flag(H), 0b0010_0000);
-
-        // Test carry flag
-        cpu.registers.a = 255;
-        cpu.registers.b = 5;
-        instruction.run(&mut cpu);
-
-        assert_eq!(cpu.get_flag(C), 0b0001_0000);
-    }
-
-    #[test]
-    fn test_sub() {
-        let mut cpu = CPU::default();
-        let instructions = get_instructions();
-        let instruction = instructions
-            .iter()
-            .find(|i| i.mnemonic == "SUB A,B")
-            .unwrap();
-
-        // Test zero flag
-        cpu.registers.a = 0;
-        cpu.registers.b = 0;
-        instruction.run(&mut cpu);
-
-        assert_eq!(cpu.get_flag(Z), 0b1000_0000);
-
-        // Test half-carry flag
-        cpu.registers.a = 62;
-        cpu.registers.b = 34;
-        instruction.run(&mut cpu);
-
-        assert_eq!(cpu.registers.a, 28);
-        assert_eq!(cpu.get_flag(H), 0b0010_0000);
-
-        // Test carry flag
-        cpu.registers.a = 0;
-        cpu.registers.b = 5;
-        instruction.run(&mut cpu);
-
-        assert_eq!(cpu.get_flag(C), 0b0001_0000);
-    }
-
-    #[test]
-    fn test_mmu() {
-        let mut mmu = MMU::default();
-
-        mmu.cartridge = [0; MAX_ROM_SIZE];
-        mmu.write_word(0x0000, 0x0001);
-        mmu.write_word(0x0002, 0x0203);
-
-        mmu.v_ram = [0; RAM_SIZE];
-        mmu.write_word(0x8000, 0x0405);
-        mmu.write_word(0x8002, 0x0607);
-
-        mmu.w_ram = [0; RAM_SIZE];
-        mmu.write_word(0xC000, 0x0809);
-        mmu.write_word(0xC002, 0x0A0B);
-
-        assert_eq!(mmu.read_word(0x0000), 0x0001);
-        assert_eq!(mmu.read_word(0x0002), 0x0203);
-
-        assert_eq!(mmu.read_word(0x8000), 0x0405);
-        assert_eq!(mmu.read_word(0x8002), 0x0607);
-
-        assert_eq!(mmu.read_word(0xC000), 0x0809);
-        assert_eq!(mmu.read_word(0xC002), 0x0A0B);
-    }
 }
