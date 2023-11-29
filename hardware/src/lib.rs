@@ -1,11 +1,13 @@
 #![allow(unused)]
 use std::fs;
+use core::fmt::Display;
 use std::io::ErrorKind::InvalidData;
 
-use tracing::{info, warn, debug};
+use tracing::{info, warn, debug, error};
 
 // Debug consts
 pub const SPAMMY_LOGS: bool = false;
+pub const LOG_LINES: bool = true;
 
 #[cfg(test)]
 mod tests;
@@ -109,22 +111,44 @@ impl Default for Registers {
             l: 0x4D,
 
             pc: 0x0000,
-            sp: 0xFFFE,
+            sp: 0x0000,
+            // sp: 0xFFFE,
         }
     }
 }
 
-/// Decode and execute all instructions
-#[derive(Debug, Default, Clone)]
+const STACK_SIZE: usize = 65536; // TODO find a real stack size
+#[derive(Debug, Clone)]
 pub struct CPU {
     reg: Registers,
     pub mmu: MMU,
+    stack: [u16; STACK_SIZE],
 }
 
 impl CPU {
+    pub fn new() -> Self {
+        Self {
+            reg: Registers::default(),
+            mmu: MMU::default(),
+            stack: [0; STACK_SIZE],
+        }
+    }
+
+    fn push_stack(&mut self, value: u16) {
+        self.stack[self.reg.sp as usize] = value;
+        self.reg.sp -= 1;
+    }
+
+    fn pop_stack(&mut self) -> u16 {
+        let v = self.stack[self.reg.sp as usize];
+        self.reg.sp += 1;
+        v
+    }
+
     fn fetch(&self) -> u8 {
         debug!("fetch");
         debug!("pc: {:#04x}", self.reg.pc);
+        debug!("sp: {:#04x}", self.reg.sp);
         let pc = self.reg.pc;
         let opcode = self.mmu.read(pc);
         opcode
@@ -139,19 +163,29 @@ impl CPU {
             .iter()
             .find(|i| i.opcode == opcode as u32);
 
+        
         debug!("{:?}", instruction);
         let pc = match instruction {
-            Some(i) => i.run(self),
+            Some(i) => {
+                // debug stuff
+                let a = &self.mmu.cartridge[self.reg.pc as usize..self.reg.pc as usize + i.length as usize];
+                let out: String = a.iter().map(|b| format!("{:#02x} ", b)).collect();
+                debug!(out);
+
+                i.run(self)
+            },
             None => panic!("Unknown opcode: {:#04x}", opcode)
         };
 
         match pc {
             ProgramCounter::Next => self.reg.pc += 2,
-            ProgramCounter::Skip(i) => self.reg.pc += self.reg.pc.checked_add(i.into()).unwrap_or(2),
-            ProgramCounter::Pause => (),
+            ProgramCounter::Skip(i) => self.reg.pc += i as u16,
+            ProgramCounter::Pause => warn!(opcode, self.reg.pc, "paused"),
         };
 
-        self.print_reg();
+        if SPAMMY_LOGS {
+            self.print_reg();
+        }
     }
 
     fn reset(&mut self) {
@@ -174,7 +208,7 @@ impl CPU {
     fn add(&mut self, b: u8, use_carry: bool) {
         let a   = self.reg.a;
         let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
-        let hc  = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
+        let hc  = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
         let r   = a.wrapping_add(b).wrapping_add(c);
         let a16 = a as u16;
         let b16 = b as u16;
@@ -191,7 +225,7 @@ impl CPU {
     fn sub(&mut self, b: u8, use_carry: bool) {
         let a   = self.reg.a;
         let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
-        let hc  = ((a & 0xF) + (b & 0xF) & 0x10) == 0x10;
+        let hc  = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
         let r   = a.wrapping_sub(b).wrapping_sub(c);
         let a16 = a as u16;
         let b16 = b as u16;
@@ -207,7 +241,7 @@ impl CPU {
     }
 
     fn print_reg(&self) {
-        info!("[*]");
+        info!("[****************************************************]");
         info!("Registers (hex):");
         info!(
             "A: {:#04x} F: {:#04x} B: {:#04x} C: {:#04x} D: {:#04x} E: {:#04x} H: {:#04x} L: {:#04x}",
@@ -233,7 +267,7 @@ impl CPU {
             self.reg.h,
             self.reg.l
         );
-        info!("[*]");
+        info!("[****************************************************]");
     }
 }
 
@@ -252,9 +286,9 @@ struct Interrupts {
 
 #[derive(Debug, Clone)]
 pub struct MMU {
-    w_ram: [u8; RAM_SIZE], // Work RAM
-    v_ram: [u8; RAM_SIZE], // Video RAM
-    pub cartridge: [u8; MAX_ROM_SIZE],
+    w_ram: Vec<u8>, // Work RAM
+    v_ram: Vec<u8>, // Video RAM
+    pub cartridge: Vec<u8>,
     timer: Timer,
     // https://gbdev.io/pandocs/Joypad_Input.html#ff00--p1joyp-joypad
     joypad: u8,
@@ -267,9 +301,9 @@ pub struct MMU {
 impl Default for MMU {
     fn default() -> Self {
         Self {
-            w_ram: [0; RAM_SIZE],
-            v_ram: [0; RAM_SIZE],
-            cartridge: [0; MAX_ROM_SIZE],
+            w_ram: vec![0; RAM_SIZE],
+            v_ram: vec![0; RAM_SIZE],
+            cartridge: vec![0; MAX_ROM_SIZE],
             timer: Timer::default(),
             joypad: 0,
             divider_reg: 0,
@@ -337,7 +371,8 @@ impl MMU {
     fn read_word(&self, address: u16) -> u16 {
         let upper = self.read(address);
         let lower = self.read(address + 1);
-        (upper as u16) << 8 | lower as u16
+        let word  = (upper as u16) << 8 | lower as u16;
+        word
     }
 
     fn write_word(&mut self, address: u16, value: u16) {
@@ -360,6 +395,17 @@ fn get_instructions() -> Vec<Instruction> {
             handler: |_| ProgramCounter::Next,
         },
         Instruction {
+            mnemonic: "LD SP, d16",
+            opcode: 0x31,
+            cycles: 3,
+            length: 3,
+            handler: |cpu| {
+                let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
+                cpu.reg.sp = d16;
+                ProgramCounter::Skip(3)
+            },
+        },  
+        Instruction {
             mnemonic: "ADD A,B",
             opcode: 0x80,
             cycles: 1,
@@ -376,6 +422,16 @@ fn get_instructions() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 cpu.sub(cpu.reg.b, false);
+                ProgramCounter::Next
+            },
+        },
+        Instruction {
+            mnemonic: "XOR A",
+            opcode: 0xAF,
+            cycles: 1,
+            length: 1,
+            handler: |cpu| {
+                cpu.reg.a = (cpu.reg.a ^ cpu.reg.a);
                 ProgramCounter::Next
             },
         },
@@ -402,28 +458,43 @@ fn get_instructions() -> Vec<Instruction> {
                 ProgramCounter::Pause
             },
         },
+        Instruction {
+            mnemonic: "RST 7",
+            opcode: 0xFF,
+            cycles: 4,
+            length: 1,
+            handler: |cpu| {
+                // push the program counter onto the stack
+                cpu.push_stack(cpu.reg.pc);
+                cpu.reg.pc = 0x38;
+
+                ProgramCounter::Pause
+            },
+        },
     ]
 }
 
 pub fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
-    // let rom = "SOME PATH";
-    // let mut bytes = fs::read(rom)?;
+    let rom = "SOME PATH";
+    let mut bytes = fs::read(rom)?;
 
-    // if bytes.len() < 0x0133 || &bytes[0x0104..0x0133] != NINTENDO_HEADER {
-    //     return Err(std::io::Error::new(
-    //         InvalidData,
-    //         "Invalid ROM",
-    //     ));
-    // }
+    if bytes.len() < 0x0133 || &bytes[0x0104..0x0133] != NINTENDO_HEADER {
+        return Err(std::io::Error::new(
+            InvalidData,
+            "Invalid ROM",
+        ));
+    }
 
+    info!("Loading ROM");
+    let mem = &mut mmu.cartridge;
+    mem.clear();
+    mem.append(&mut bytes);
+
+    Ok(())
+}
+
+pub fn load_boot_rom(mmu: &mut MMU) {
     let mem = &mut mmu.cartridge;
     info!("Loading boot ROM");
     mem[..BOOT_ROM.len()].copy_from_slice(&BOOT_ROM);
-    info!("{:?}", &mem[..256]);
-
-    info!("Loading ROM");
-    // mem.iter_mut().for_each(|b| *b = 0);
-    // mem[..bytes.len()].copy_from_slice(&bytes);
-
-    Ok(())
 }

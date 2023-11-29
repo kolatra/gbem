@@ -3,7 +3,7 @@ use crate::FlagBit::*;
 
 #[test]
 fn test_add() {
-    let mut cpu = CPU::default();
+    let mut cpu = CPU::new();
     let instructions = get_instructions();
     let instruction = instructions
         .iter()
@@ -35,7 +35,7 @@ fn test_add() {
 
 #[test]
 fn test_sub() {
-    let mut cpu = CPU::default();
+    let mut cpu = CPU::new();
     let instructions = get_instructions();
     let instruction = instructions
         .iter()
