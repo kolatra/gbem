@@ -107,18 +107,12 @@ impl Default for Registers {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GPU {}
 impl GPU {
     pub fn new() -> Self {
         error!("nice gpu nerd");
         Self {}
-    }
-}
-
-impl Default for GPU {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
