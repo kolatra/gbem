@@ -1,3 +1,4 @@
+use super::cpu::CPU;
 use super::*;
 use crate::FlagBit::*;
 
@@ -67,7 +68,7 @@ fn test_sub() {
 
 #[test]
 fn test_mmu() {
-    let mut mmu = MMU::default();
+    let mut mmu = MMU::new();
 
     mmu.write_word(0x0000, 0x0001);
     mmu.write_word(0x0002, 0x0203);

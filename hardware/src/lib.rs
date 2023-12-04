@@ -1,9 +1,9 @@
-#![allow(unused)]
+#![allow(unused, clippy::eq_op, clippy::match_overlapping_arm)]
 use std::fs;
 use core::fmt::Display;
 use std::io::ErrorKind::InvalidData;
 
-use tracing::{info, warn, debug, error};
+use tracing::{info, warn, debug, error, trace};
 
 // Debug consts
 pub const SPAMMY_LOGS: bool = false;
@@ -11,6 +11,7 @@ pub const LOG_LINES: bool = true;
 
 #[cfg(test)]
 mod tests;
+pub mod cpu;
 
 const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
 const MACHINE_FREQ: usize = 1048576; // 1.048576 MHz - 1/4 of the clock frequency
@@ -55,23 +56,8 @@ enum ProgramCounter {
     Pause,
 }
 
-#[derive(Debug, Clone)]
-struct Instruction {
-    mnemonic: &'static str,
-    opcode: u32,
-    cycles: i8,
-    length: i8,
-    handler: fn(cpu: &mut CPU) -> ProgramCounter,
-}
-
-impl Instruction {
-    fn run(&self, cpu: &mut CPU) -> ProgramCounter {
-        (self.handler)(cpu)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum FlagBit {
+pub enum FlagBit {
     Z = 7,
     N = 6,
     H = 5,
@@ -93,14 +79,14 @@ pub struct Registers {
     sp: u16,
 }
 
-impl Default for Registers {
-    fn default() -> Self {
+impl Registers {
+    fn new() -> Self {
         Self {
             a: 0x01,
             // FIXME:
-            // If the header checksum is $00, 
+            // If the header checksum is $00,
             // then the carry and half-carry flags are clear;
-            // otherwise, they are both set. 
+            // otherwise, they are both set.
             // Always set the Z flag.
             f: 0x80,
             b: 0x00,
@@ -110,164 +96,24 @@ impl Default for Registers {
             h: 0x01,
             l: 0x4D,
 
-            pc: 0x0000,
-            sp: 0x0000,
-            // sp: 0xFFFE,
+            pc: 0x0100,
+            sp: 0xFFFE,
         }
     }
 }
 
-const STACK_SIZE: usize = 65536; // TODO find a real stack size
 #[derive(Debug, Clone)]
-pub struct CPU {
-    reg: Registers,
-    pub mmu: MMU,
-    stack: [u16; STACK_SIZE],
+pub struct GPU {}
+impl GPU {
+    pub fn new() -> Self {
+        error!("nice gpu nerd");
+        Self {}
+    }
 }
 
-impl CPU {
-    pub fn new() -> Self {
-        Self {
-            reg: Registers::default(),
-            mmu: MMU::default(),
-            stack: [0; STACK_SIZE],
-        }
-    }
-
-    fn push_stack(&mut self, value: u16) {
-        self.stack[self.reg.sp as usize] = value;
-        self.reg.sp -= 1;
-    }
-
-    fn pop_stack(&mut self) -> u16 {
-        let v = self.stack[self.reg.sp as usize];
-        self.reg.sp += 1;
-        v
-    }
-
-    fn fetch(&self) -> u8 {
-        debug!("fetch");
-        debug!("pc: {:#04x}", self.reg.pc);
-        debug!("sp: {:#04x}", self.reg.sp);
-        let pc = self.reg.pc;
-        let opcode = self.mmu.read(pc);
-        opcode
-    }
-
-    pub fn cycle(&mut self) {
-        debug!("Cycle");
-        let opcode = self.fetch();
-        debug!("opcode: {:#04x}", opcode);
-        let instructions = get_instructions();
-        let instruction = instructions
-            .iter()
-            .find(|i| i.opcode == opcode as u32);
-
-        
-        debug!("{:?}", instruction);
-        let pc = match instruction {
-            Some(i) => {
-                // debug stuff
-                let a = &self.mmu.cartridge[self.reg.pc as usize..self.reg.pc as usize + i.length as usize];
-                let out: String = a.iter().map(|b| format!("{:#02x} ", b)).collect();
-                debug!(out);
-
-                i.run(self)
-            },
-            None => panic!("Unknown opcode: {:#04x}", opcode)
-        };
-
-        match pc {
-            ProgramCounter::Next => self.reg.pc += 2,
-            ProgramCounter::Skip(i) => self.reg.pc += i as u16,
-            ProgramCounter::Pause => warn!(opcode, self.reg.pc, "paused"),
-        };
-
-        if SPAMMY_LOGS {
-            self.print_reg();
-        }
-    }
-
-    fn reset(&mut self) {
-        self.reg = Registers::default();
-    }
-
-    fn set_flag(&mut self, flag: FlagBit, value: bool) {
-        let bit = flag as u8;
-        let mask = 1 << bit;
-        self.reg.f = (self.reg.f & !mask) | ((value as u8) << bit);
-    }
-
-    fn is_set(&self, flag: FlagBit) -> bool {
-        let bit = flag as u8;
-        let mask = 1 << bit;
-        self.reg.f & mask > 0
-    }
-
-    /// https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
-    fn add(&mut self, b: u8, use_carry: bool) {
-        let a   = self.reg.a;
-        let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
-        let hc  = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
-        let r   = a.wrapping_add(b).wrapping_add(c);
-        let a16 = a as u16;
-        let b16 = b as u16;
-        let c16 = c as u16;
-
-        use FlagBit::*;
-        self.set_flag(Z, r == 0);
-        self.set_flag(N, false);
-        self.set_flag(H, hc);
-        self.set_flag(C, (a16 + b16 + c16) > 0xFF);
-        self.reg.a = r;
-    }
-
-    fn sub(&mut self, b: u8, use_carry: bool) {
-        let a   = self.reg.a;
-        let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
-        let hc  = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
-        let r   = a.wrapping_sub(b).wrapping_sub(c);
-        let a16 = a as u16;
-        let b16 = b as u16;
-        let c16 = c as u16;
-
-        use FlagBit::*;
-        self.set_flag(Z, r == 0);
-        self.set_flag(N, true);
-        self.set_flag(H, hc);
-        let result = a16.checked_sub(b16).and_then(|b16| b16.checked_sub(c16));
-        self.set_flag(C, result.is_none());
-        self.reg.a = r;
-    }
-
-    fn print_reg(&self) {
-        info!("[****************************************************]");
-        info!("Registers (hex):");
-        info!(
-            "A: {:#04x} F: {:#04x} B: {:#04x} C: {:#04x} D: {:#04x} E: {:#04x} H: {:#04x} L: {:#04x}",
-            self.reg.a,
-            self.reg.f,
-            self.reg.b,
-            self.reg.c,
-            self.reg.d,
-            self.reg.e,
-            self.reg.h,
-            self.reg.l
-        );
-
-        info!("Registers (bin):");
-        info!(
-            "A: {:#010b} F: {:#010b} B: {:#010b} C: {:#010b} D: {:#010b} E: {:#010b} H: {:#010b} L: {:#010b}",
-            self.reg.a,
-            self.reg.f,
-            self.reg.b,
-            self.reg.c,
-            self.reg.d,
-            self.reg.e,
-            self.reg.h,
-            self.reg.l
-        );
-        info!("[****************************************************]");
+impl Default for GPU {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -284,6 +130,26 @@ struct Interrupts {
     flag: u8,
 }
 
+// maybe idk
+trait Memory {
+    fn read(&self, address: u16) -> u8;
+    fn write(&mut self, address: u16, value: u8);
+
+    fn read_word(&self, address: u16) -> u16 {
+        let upper = self.read(address);
+        let lower = self.read(address + 1);
+
+        (upper as u16) << 8 | lower as u16
+    }
+
+    fn write_word(&mut self, address: u16, value: u16) {
+        let upper = (value >> 8) as u8;
+        let lower = value as u8;
+        self.write(address, upper);
+        self.write(address + 1, lower);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct MMU {
     w_ram: Vec<u8>, // Work RAM
@@ -298,8 +164,8 @@ pub struct MMU {
     interrupts: Interrupts,
 }
 
-impl Default for MMU {
-    fn default() -> Self {
+impl MMU {
+    pub fn new() -> Self {
         Self {
             w_ram: vec![0; RAM_SIZE],
             v_ram: vec![0; RAM_SIZE],
@@ -312,10 +178,17 @@ impl Default for MMU {
     }
 }
 
+impl Default for MMU {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MMU {
     const VRAM_START: usize = 0x8000;
     const WRAM_START: usize = 0xC000;
     const ERAM_START: usize = 0xE000;
+    const HRAM_START: usize = 0xFF80;
 
     fn read(&self, address: u16) -> u8 {
         let address = address as usize;
@@ -371,8 +244,8 @@ impl MMU {
     fn read_word(&self, address: u16) -> u16 {
         let upper = self.read(address);
         let lower = self.read(address + 1);
-        let word  = (upper as u16) << 8 | lower as u16;
-        word
+
+        (upper as u16) << 8 | lower as u16
     }
 
     fn write_word(&mut self, address: u16, value: u16) {
@@ -380,6 +253,21 @@ impl MMU {
         let lower = value as u8;
         self.write(address, upper);
         self.write(address + 1, lower);
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Instruction {
+    mnemonic: &'static str,
+    opcode: u16, // NOTE: this was a u32, but u16 is probably fine, keep an eye
+    cycles: i8,
+    length: i8,
+    handler: fn(cpu: &mut cpu::CPU) -> ProgramCounter,
+}
+
+impl Instruction {
+    fn run(&self, cpu: &mut cpu::CPU) -> ProgramCounter {
+        (self.handler)(cpu)
     }
 }
 
@@ -395,6 +283,18 @@ fn get_instructions() -> Vec<Instruction> {
             handler: |_| ProgramCounter::Next,
         },
         Instruction {
+            mnemonic: "INC DE",
+            opcode: 0x13,
+            cycles: 1,
+            length: 1,
+            handler: |cpu| {
+                cpu.reg.d = cpu.reg.d.wrapping_add(1);
+                cpu.reg.e = cpu.reg.e.wrapping_add(1);
+
+                ProgramCounter::Next
+            },
+        },
+        Instruction {
             mnemonic: "LD SP, d16",
             opcode: 0x31,
             cycles: 3,
@@ -404,7 +304,7 @@ fn get_instructions() -> Vec<Instruction> {
                 cpu.reg.sp = d16;
                 ProgramCounter::Skip(3)
             },
-        },  
+        },
         Instruction {
             mnemonic: "ADD A,B",
             opcode: 0x80,
@@ -465,10 +365,11 @@ fn get_instructions() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 // push the program counter onto the stack
-                cpu.push_stack(cpu.reg.pc);
+                cpu.push_stack((cpu.reg.pc >> 8) as u8);
+                cpu.push_stack(cpu.reg.pc as u8);
+                // jump to the address 0x38
                 cpu.reg.pc = 0x38;
-
-                ProgramCounter::Pause
+                ProgramCounter::Next
             },
         },
     ]
@@ -478,11 +379,8 @@ pub fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
     let rom = "SOME PATH";
     let mut bytes = fs::read(rom)?;
 
-    if bytes.len() < 0x0133 || &bytes[0x0104..0x0133] != NINTENDO_HEADER {
-        return Err(std::io::Error::new(
-            InvalidData,
-            "Invalid ROM",
-        ));
+    if bytes.len() < 0x0133 || bytes[0x0104..0x0133] != NINTENDO_HEADER {
+        return Err(std::io::Error::new(InvalidData, "Invalid ROM"));
     }
 
     info!("Loading ROM");

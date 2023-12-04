@@ -1,35 +1,36 @@
 #![allow(unused)]
-use tracing::error;
-use tracing::{debug, info};
-use std::sync::RwLock;
 use std::sync::mpsc;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::sync::mpsc::Receiver;
 use std::thread;
 use std::time::Duration;
 use std::process::exit;
+use tracing::{debug, info, error};
 
-use hardware::{CPU, load_boot_rom, LOG_LINES};
+use hardware::{cpu::CPU, MMU, GPU, load_boot_rom, LOG_LINES};
 
 fn main() {
     setup_logs();
-
+    
     let mut cpu = CPU::new();
+    // https://github.com/Hacktix/Bootix/blob/main/bootix_dmg.asm
+    // Can look here for the "steps"
     load_boot_rom(&mut cpu.mmu);
 
     // box that bitch up for sharing
     let p_cpu = Arc::new(RwLock::new(cpu));
-    let cpu_r = setup_thread(Arc::clone(&p_cpu));
+    let r_cpu = setup_thread(Arc::clone(&p_cpu));
 
     loop {
-        let Ok(new_state) = cpu_r.recv() else {
+        let Ok(new_state) = r_cpu.recv() else {
             error!("cpu thread died");
-            error!("exiting...");
+            error!("goodbye :(");
             exit(1);
         };
-        info!("received");
+        debug!("received");
 
-        // do the graphics processing shit here idk
+        // graphics
 
         let b = false;
         if b {
@@ -50,12 +51,12 @@ fn setup_logs() {
 fn setup_thread(cpu: Arc<RwLock<CPU>>) -> Receiver<Arc<RwLock<CPU>>> {
     let (cpu_sender, cpu_receiver) = mpsc::channel();
     let _t_cpu = thread::spawn(move || loop {
-        cpu.write().and_then(|mut c| Ok(c.cycle()));
+        let _ = cpu.write().map(|mut c| c.cycle());
 
         cpu_sender.send(Arc::clone(&cpu)).unwrap();
         info!("sending");
 
-        thread::sleep(Duration::from_millis(1000));
+        thread::sleep(Duration::from_millis(500));
     });
 
     cpu_receiver
