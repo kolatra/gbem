@@ -1,9 +1,9 @@
 #![allow(unused, clippy::eq_op, clippy::match_overlapping_arm)]
-use std::fs;
 use core::fmt::Display;
+use std::fs;
 use std::io::ErrorKind::InvalidData;
 
-use tracing::{info, warn, debug, error, trace};
+use tracing::{debug, error, info, trace, warn};
 
 pub mod cpu;
 
@@ -101,6 +101,12 @@ impl Registers {
     }
 }
 
+impl Default for Registers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GPU {}
 impl GPU {
@@ -177,12 +183,6 @@ impl MMU {
     }
 }
 
-// impl Default for MMU {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }
-
 impl MMU {
     const VRAM_START: usize = 0x8000;
     const WRAM_START: usize = 0xC000;
@@ -221,7 +221,10 @@ impl MMU {
         match address {
             0x0000..=0x7FFF => self.cartridge[address] = value,
             0x8000..=0x9FFF => self.v_ram[address - Self::VRAM_START] = value,
-            0xA000..=0xBFFF => info!("Wrote {:x} to cartridge external RAM at {:x}", value, address),
+            0xA000..=0xBFFF => info!(
+                "Wrote {:x} to cartridge external RAM at {:x}",
+                value, address
+            ),
             0xC000..=0xDFFF => self.w_ram[address - Self::WRAM_START] = value,
             0xE000..=0xFDFF => info!("Wrote {:x} to echo RAM at {:x}", value, address),
             0xFE00..=0xFE9F => info!("Wrote {:x} to OAM at {:x}", value, address),
@@ -232,11 +235,17 @@ impl MMU {
             0xFF06 => self.timer.modulo = value,
             0xFF07 => self.timer.control = value,
             0xFF0F => self.interrupts.flag = value,
-            0xFF10..=0xFF26 => info!("Wrote {:x} to sound control registers at {:x}", value, address),
+            0xFF10..=0xFF26 => info!(
+                "Wrote {:x} to sound control registers at {:x}",
+                value, address
+            ),
             0xFF00..=0xFF7F => info!("Wrote {:x} to i/o registers at {:x}", value, address),
             0xFF80..=0xFFFE => info!("Wrote {:x} to high RAM at {:x}", value, address),
             0xFFFF => self.interrupts.enable = value,
-            _ => warn!("Tried to write {:x} to {:x} (outside of address space)", value, address),
+            _ => warn!(
+                "Tried to write {:x} to {:x} (outside of address space)",
+                value, address
+            ),
         }
     }
 
@@ -368,7 +377,7 @@ fn get_instructions() -> Vec<Instruction> {
                 cpu.push_stack(cpu.reg.pc as u8);
                 // cpu.reg.pc = 0x38;
                 // FIXME: just put as 138 for now
-                // but the actual behaviour is 
+                // but the actual behaviour is
                 // mapping the boot rom at 0x0000
                 // see 29 lines below
                 cpu.reg.pc = 0x0138;

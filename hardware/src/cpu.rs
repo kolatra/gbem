@@ -1,11 +1,11 @@
-use crate::{Registers, MMU, GPU, ProgramCounter, FlagBit, get_instructions, SPAMMY_LOGS};
-use tracing::{debug, info, warn, trace};
+use crate::{get_instructions, FlagBit, ProgramCounter, Registers, GPU, MMU, SPAMMY_LOGS};
+use tracing::{debug, info, trace, warn};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CPU {
     pub reg: Registers,
     pub mmu: MMU,
-    pub gpu: GPU
+    pub gpu: GPU,
 }
 
 impl CPU {
@@ -45,15 +45,14 @@ impl CPU {
         let opcode = self.fetch();
         debug!("opcode: {:#04x}", opcode);
         let instructions = get_instructions();
-        let instruction = instructions
-            .iter()
-            .find(|i| i.opcode == opcode as u16);
-        
+        let instruction = instructions.iter().find(|i| i.opcode == opcode as u16);
+
         // debug!("{:?}", instruction);
         let pc = match instruction {
             Some(i) => {
                 // debug stuff
-                let a = &self.mmu.cartridge[self.reg.pc as usize..self.reg.pc as usize + i.length as usize];
+                let a = &self.mmu.cartridge
+                    [self.reg.pc as usize..self.reg.pc as usize + i.length as usize];
                 #[allow(clippy::format_collect)]
                 let instr_bytes: String = a.iter().map(|b| format!("{:#02x} ", b)).collect();
                 debug!(instr_bytes);
@@ -161,11 +160,5 @@ impl CPU {
             self.reg.l
         );
         trace!("[****************************************************]");
-    }
-}
-
-impl Default for CPU {
-    fn default() -> Self {
-        Self::new()
     }
 }

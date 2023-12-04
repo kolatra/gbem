@@ -1,14 +1,14 @@
 #![allow(unused)]
+use std::process::exit;
 use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::sync::RwLock;
-use std::sync::mpsc::Receiver;
 use std::thread;
 use std::time::Duration;
-use std::process::exit;
-use tracing::{debug, info, error};
+use tracing::{debug, error, info};
 
-use hardware::{cpu::CPU, MMU, GPU, load_boot_rom, LOG_LINES, SPAMMY_LOGS};
+use hardware::{cpu::CPU, load_boot_rom, GPU, LOG_LINES, MMU, SPAMMY_LOGS};
 
 fn main() {
     setup_logs();
@@ -25,15 +25,15 @@ fn main() {
     loop {
         match r_cpu.recv() {
             Ok(cpu_state) => {
-                // update everything else 
+                // update everything else
                 // with new memory and cpu state
-            },
+            }
 
             Err(e) => {
                 error!("cpu thread died \n{e}");
                 error!("goodbye :(");
-                break
-            },
+                break;
+            }
         }
     }
 }
@@ -41,7 +41,7 @@ fn main() {
 fn setup_logs() {
     let level = match SPAMMY_LOGS {
         true => tracing::Level::TRACE,
-        false => tracing::Level::DEBUG
+        false => tracing::Level::DEBUG,
     };
 
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
