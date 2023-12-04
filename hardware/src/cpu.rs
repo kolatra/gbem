@@ -1,5 +1,5 @@
 use crate::{Registers, MMU, GPU, ProgramCounter, FlagBit, get_instructions, SPAMMY_LOGS};
-use tracing::{debug, info, warn};
+use tracing::{debug, info, warn, trace};
 
 #[derive(Debug, Clone)]
 pub struct CPU {
@@ -20,18 +20,20 @@ impl CPU {
 
 impl CPU {
     pub fn push_stack(&mut self, value: u8) {
+        trace!("push_stack");
         self.reg.sp -= 1;
         self.mmu.write(self.reg.sp, value);
     }
 
     pub fn pop_stack(&mut self) -> u8 {
+        trace!("pop_stack");
         let value = self.mmu.read(self.reg.sp);
         self.reg.sp += 1;
         value
     }
 
     pub fn fetch(&self) -> u8 {
-        debug!("fetch");
+        trace!("fetch");
         debug!("pc: {:#04x}", self.reg.pc);
         debug!("sp: {:#04x}", self.reg.sp);
         let pc = self.reg.pc;
@@ -39,7 +41,7 @@ impl CPU {
     }
 
     pub fn cycle(&mut self) {
-        debug!("Cycle");
+        trace!("cycle");
         let opcode = self.fetch();
         debug!("opcode: {:#04x}", opcode);
         let instructions = get_instructions();
@@ -47,7 +49,7 @@ impl CPU {
             .iter()
             .find(|i| i.opcode == opcode as u16);
         
-        debug!("{:?}", instruction);
+        // debug!("{:?}", instruction);
         let pc = match instruction {
             Some(i) => {
                 // debug stuff
@@ -62,28 +64,30 @@ impl CPU {
             None => panic!("Unknown opcode: {:#04x}", opcode),
         };
 
+        debug!("pc: {:?}", pc);
         match pc {
             ProgramCounter::Next => self.reg.pc += 2,
             ProgramCounter::Skip(i) => self.reg.pc += i as u16,
             ProgramCounter::Pause => warn!(opcode, self.reg.pc, "paused"),
         };
 
-        if SPAMMY_LOGS {
-            self.print_reg();
-        }
+        self.print_reg()
     }
 
     pub fn reset(&mut self) {
+        trace!("reset");
         self.reg = Registers::new();
     }
 
     pub fn set_flag(&mut self, flag: FlagBit, value: bool) {
+        trace!("set_flag");
         let bit = flag as u8;
         let mask = 1 << bit;
         self.reg.f = (self.reg.f & !mask) | ((value as u8) << bit);
     }
 
     pub fn is_set(&self, flag: FlagBit) -> bool {
+        trace!("is_set");
         let bit = flag as u8;
         let mask = 1 << bit;
         self.reg.f & mask > 0
@@ -92,6 +96,7 @@ impl CPU {
     /// https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
     #[rustfmt::skip]
     pub fn add(&mut self, b: u8, use_carry: bool) {
+        trace!("add");
         let a   = self.reg.a;
         let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
         let hc  = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
@@ -110,6 +115,7 @@ impl CPU {
 
     #[rustfmt::skip]
     pub fn sub(&mut self, b: u8, use_carry: bool) {
+        trace!("sub");
         let a   = self.reg.a;
         let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
         let hc  = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
@@ -128,9 +134,9 @@ impl CPU {
     }
 
     pub fn print_reg(&self) {
-        info!("[****************************************************]");
-        info!("Registers (hex):");
-        info!(
+        trace!("[****************************************************]");
+        trace!("Registers (hex):");
+        trace!(
             "A: {:#04x} F: {:#04x} B: {:#04x} C: {:#04x} D: {:#04x} E: {:#04x} H: {:#04x} L: {:#04x}",
             self.reg.a,
             self.reg.f,
@@ -142,8 +148,8 @@ impl CPU {
             self.reg.l
         );
 
-        info!("Registers (bin):");
-        info!(
+        trace!("Registers (bin):");
+        trace!(
             "A: {:#010b} F: {:#010b} B: {:#010b} C: {:#010b} D: {:#010b} E: {:#010b} H: {:#010b} L: {:#010b}",
             self.reg.a,
             self.reg.f,
@@ -154,7 +160,7 @@ impl CPU {
             self.reg.h,
             self.reg.l
         );
-        info!("[****************************************************]");
+        trace!("[****************************************************]");
     }
 }
 

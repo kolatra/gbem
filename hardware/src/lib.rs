@@ -5,20 +5,19 @@ use std::io::ErrorKind::InvalidData;
 
 use tracing::{info, warn, debug, error, trace};
 
-// Debug consts
-pub const SPAMMY_LOGS: bool = false;
-pub const LOG_LINES: bool = true;
+pub mod cpu;
 
 #[cfg(test)]
 mod tests;
-pub mod cpu;
 
-const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
-const MACHINE_FREQ: usize = 1048576; // 1.048576 MHz - 1/4 of the clock frequency
-const FPS: usize = 60;
-
-const RAM_SIZE: usize = 0x2000;
-const MAX_ROM_SIZE: usize = 0x8000; // Assumed from the region size in memory
+// TODO have a config file or CLI input for these?
+pub const SPAMMY_LOGS: bool = true;
+pub const LOG_LINES: bool = true;
+pub const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
+pub const MACHINE_FREQ: usize = 1048576; // 1.048576 MHz - 1/4 of the clock frequency
+pub const FPS: usize = 60;
+pub const RAM_SIZE: usize = 0x2000;
+pub const MAX_ROM_SIZE: usize = 0x8000; // Assumed from the region size in memory
 
 pub const NINTENDO_HEADER: [u8; 48] = [
     0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
@@ -150,7 +149,7 @@ trait Memory {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MMU {
     w_ram: Vec<u8>, // Work RAM
     v_ram: Vec<u8>, // Video RAM
@@ -178,11 +177,11 @@ impl MMU {
     }
 }
 
-impl Default for MMU {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl Default for MMU {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
 
 impl MMU {
     const VRAM_START: usize = 0x8000;
@@ -192,7 +191,7 @@ impl MMU {
 
     fn read(&self, address: u16) -> u8 {
         let address = address as usize;
-        debug!("read: {:#04x}", address);
+        trace!("read: {:#04x}", address);
 
         match address {
             0x0000..=0x7FFF => self.cartridge[address],
@@ -367,8 +366,12 @@ fn get_instructions() -> Vec<Instruction> {
                 // push the program counter onto the stack
                 cpu.push_stack((cpu.reg.pc >> 8) as u8);
                 cpu.push_stack(cpu.reg.pc as u8);
-                // jump to the address 0x38
-                cpu.reg.pc = 0x38;
+                // cpu.reg.pc = 0x38;
+                // FIXME: just put as 138 for now
+                // but the actual behaviour is 
+                // mapping the boot rom at 0x0000
+                // see 29 lines below
+                cpu.reg.pc = 0x0138;
                 ProgramCounter::Next
             },
         },
@@ -391,8 +394,10 @@ pub fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Normally this is mapped into 0x000 but
+/// for simplicity we'll just load it into memory
 pub fn load_boot_rom(mmu: &mut MMU) {
     let mem = &mut mmu.cartridge;
     info!("Loading boot ROM");
-    mem[..BOOT_ROM.len()].copy_from_slice(&BOOT_ROM);
+    mem[0x100..0x100 + BOOT_ROM.len()].copy_from_slice(&BOOT_ROM);
 }

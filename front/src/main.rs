@@ -8,11 +8,11 @@ use std::time::Duration;
 use std::process::exit;
 use tracing::{debug, info, error};
 
-use hardware::{cpu::CPU, MMU, GPU, load_boot_rom, LOG_LINES};
+use hardware::{cpu::CPU, MMU, GPU, load_boot_rom, LOG_LINES, SPAMMY_LOGS};
 
 fn main() {
     setup_logs();
-    
+
     let mut cpu = CPU::new();
     // https://github.com/Hacktix/Bootix/blob/main/bootix_dmg.asm
     // Can look here for the "steps"
@@ -23,27 +23,31 @@ fn main() {
     let r_cpu = setup_thread(Arc::clone(&p_cpu));
 
     loop {
-        let Ok(new_state) = r_cpu.recv() else {
-            error!("cpu thread died");
-            error!("goodbye :(");
-            exit(1);
-        };
-        debug!("received");
+        match r_cpu.recv() {
+            Ok(cpu_state) => {
+                // update everything else 
+                // with new memory and cpu state
+            },
 
-        // graphics
-
-        let b = false;
-        if b {
-            break;
+            Err(e) => {
+                error!("cpu thread died \n{e}");
+                error!("goodbye :(");
+                break
+            },
         }
     }
 }
 
 fn setup_logs() {
+    let level = match SPAMMY_LOGS {
+        true => tracing::Level::TRACE,
+        false => tracing::Level::DEBUG
+    };
+
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
         .with_line_number(LOG_LINES)
         .with_file(LOG_LINES)
-        .with_max_level(tracing::Level::TRACE)
+        .with_max_level(level)
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
