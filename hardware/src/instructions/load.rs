@@ -16,7 +16,6 @@ pub fn get() -> Vec<Instruction> {
                 ProgramCounter::Skip(3)
             },
         },
-
         Instruction {
             mnemonic: "LD SP, d16",
             opcode: 0x31,
@@ -28,7 +27,6 @@ pub fn get() -> Vec<Instruction> {
                 ProgramCounter::Skip(3)
             },
         },
-
         Instruction {
             mnemonic: "LD (HL-), A",
             opcode: 0x32,

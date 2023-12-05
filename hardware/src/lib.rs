@@ -52,7 +52,7 @@ pub const JUMP_VECTORS: [u8; 12] = [
 ];
 
 #[derive(Debug, Clone, Copy)]
-enum ProgramCounter {
+pub enum ProgramCounter {
     Next,
     Skip(u8),
     Pause,
@@ -308,39 +308,9 @@ fn get_instructions() -> Vec<Instruction> {
             cycles: 2,
             length: 1,
             handler: |cpu| {
-                let hl = cpu.reg.h as u16 + (cpu.reg.l as u16) << 8;
+                let hl = (cpu.reg.h as u16 + (cpu.reg.l as u16)) << 8;
                 cpu.mmu.write(hl, cpu.reg.a);
                 cpu.reg.l = cpu.reg.l.wrapping_sub(1);
-                ProgramCounter::Next
-            },
-        },
-        Instruction {
-            mnemonic: "ADD A,B",
-            opcode: 0x80,
-            cycles: 1,
-            length: 1,
-            handler: |cpu| {
-                cpu.add(cpu.reg.b, false);
-                ProgramCounter::Next
-            },
-        },
-        Instruction {
-            mnemonic: "SUB A,B",
-            opcode: 0x90,
-            cycles: 1,
-            length: 1,
-            handler: |cpu| {
-                cpu.sub(cpu.reg.b, false);
-                ProgramCounter::Next
-            },
-        },
-        Instruction {
-            mnemonic: "XOR A",
-            opcode: 0xAF,
-            cycles: 1,
-            length: 1,
-            handler: |cpu| {
-                cpu.reg.a = (cpu.reg.a ^ cpu.reg.a);
                 ProgramCounter::Next
             },
         },

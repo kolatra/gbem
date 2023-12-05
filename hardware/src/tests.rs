@@ -5,7 +5,7 @@ use crate::FlagBit::*;
 #[test]
 fn test_add() {
     let mut cpu = CPU::new();
-    let instructions = get_instructions();
+    let instructions = instructions::get();
     let instruction = instructions
         .iter()
         .find(|i| i.mnemonic == "ADD A,B")
@@ -37,7 +37,7 @@ fn test_add() {
 #[test]
 fn test_sub() {
     let mut cpu = CPU::new();
-    let instructions = get_instructions();
+    let instructions = instructions::get();
     let instruction = instructions
         .iter()
         .find(|i| i.mnemonic == "SUB A,B")

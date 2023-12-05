@@ -26,7 +26,7 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    fn run(&self, cpu: &mut CPU) -> ProgramCounter {
+    pub fn run(&self, cpu: &mut CPU) -> ProgramCounter {
         (self.handler)(cpu)
     }
 }
