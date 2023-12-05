@@ -10,7 +10,7 @@ pub fn get() -> Vec<Instruction> {
             cycles: 1,
             length: 1,
             handler: |cpu| {
-                cpu.reg.a = (cpu.reg.a ^ cpu.reg.a);
+                cpu.reg.a ^= cpu.reg.a;
                 ProgramCounter::Next
             },
         },

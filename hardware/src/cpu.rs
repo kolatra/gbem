@@ -44,10 +44,9 @@ impl CPU {
 
     fn dbg_print_bytes(&self, i: &Instruction) {
         let pc = self.reg.pc as usize;
-        let a = &self.mmu.cartridge[pc..pc + i.length as usize];
-        #[allow(clippy::format_collect)]
-        let instr_bytes: String = a.iter().map(|b| format!("{:#02x} ", b)).collect();
-        debug!(instr_bytes);
+        let ins_bytes = &self.mmu.cartridge[pc..pc + i.length as usize];
+        let out = ins_bytes.iter().fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
+        debug!(out);
     }
 
     pub fn cycle(&mut self) {

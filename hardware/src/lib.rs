@@ -308,7 +308,7 @@ fn get_instructions() -> Vec<Instruction> {
             cycles: 2,
             length: 1,
             handler: |cpu| {
-                let hl = (cpu.reg.h as u16 + (cpu.reg.l as u16)) << 8;
+                let hl = (cpu.reg.h as u16 + cpu.reg.l as u16) << 8;
                 cpu.mmu.write(hl, cpu.reg.a);
                 cpu.reg.l = cpu.reg.l.wrapping_sub(1);
                 ProgramCounter::Next
