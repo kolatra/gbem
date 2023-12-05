@@ -1,20 +1,20 @@
-use std::sync::OnceLock;
+use std::sync::LazyLock;
+
+use tracing::trace;
 
 use crate::cpu::CPU;
 
-pub fn get() -> &'static Vec<Instruction> {
-    static INS: OnceLock<Vec<Instruction>> = OnceLock::new();
-    INS.get_or_init(|| {
-        let mut v = Vec::new();
-        v.append(&mut load::get());
-        v.append(&mut logic::get());
-        v.append(&mut rotate::get());
-        v.append(&mut bits::get());
-        v.append(&mut control::get());
-        v.append(&mut jump::get());
-        v
-    })
-}
+pub static INSTRUCTIONS: LazyLock<Vec<Instruction>> = LazyLock::new(|| {
+    trace!("initializing instructions");
+    let mut v = Vec::new();
+    v.append(&mut load::get());
+    v.append(&mut logic::get());
+    v.append(&mut rotate::get());
+    v.append(&mut bits::get());
+    v.append(&mut control::get());
+    v.append(&mut jump::get());
+    v
+});
 
 // https://meganesu.github.io/generate-gb-opcodes/
 // https://gekkio.fi/files/gb-docs/gbctr.pdf

@@ -1,5 +1,5 @@
 use crate::{
-    instructions::{self, Instruction},
+    instructions::{Instruction, INSTRUCTIONS},
     mem::MMU,
     FlagBit, Registers, GPU,
 };
@@ -44,7 +44,7 @@ impl CPU {
         let pc = self.reg.pc;
         let opcode = self.mmu.read(pc);
 
-        match instructions::get()
+        match INSTRUCTIONS
             .iter()
             .find(|i| i.opcode == opcode.into())
         {

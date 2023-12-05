@@ -1,4 +1,5 @@
 #![allow(clippy::eq_op, clippy::match_overlapping_arm)]
+#![feature(lazy_cell)]
 use tracing::error;
 
 pub mod cpu;

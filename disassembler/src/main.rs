@@ -1,8 +1,7 @@
-use hardware::instructions;
+use hardware::instructions::INSTRUCTIONS;
 
 fn main() {
     let bytes = include_bytes!("../DMG_ROM.bin").to_vec();
-    let instructions = instructions::get();
 
     // 0x31 0xff 0xfe LD SP, d16
     let mut skip_count = 0;
@@ -12,7 +11,7 @@ fn main() {
             continue;
         }
 
-        let instruction = instructions.iter().find(|i| i.opcode == *byte as u32);
+        let instruction = INSTRUCTIONS.iter().find(|i| i.opcode == *byte as u32);
         match instruction {
             Some(i) => {
                 println!("{:#04x} {}", byte, i.mnemonic);
