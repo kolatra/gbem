@@ -1,5 +1,6 @@
-use crate::{get_instructions, FlagBit, ProgramCounter, Registers, GPU, MMU, SPAMMY_LOGS};
+use crate::{get_instructions, FlagBit, ProgramCounter, Registers, GPU, MMU, SPAMMY_LOGS, Instruction};
 use tracing::{debug, info, trace, warn};
+
 
 #[derive(Debug, Clone, Default)]
 pub struct CPU {
@@ -40,6 +41,14 @@ impl CPU {
         self.mmu.read(pc)
     }
 
+    fn dbg_print_bytes(&self, i: &Instruction) {
+        let pc = self.reg.pc as usize;
+        let a = &self.mmu.cartridge [pc..pc + i.length as usize];
+        #[allow(clippy::format_collect)]
+        let instr_bytes: String = a.iter().map(|b| format!("{:#02x} ", b)).collect();
+        debug!(instr_bytes);
+    }
+
     pub fn cycle(&mut self) {
         trace!("cycle");
         let opcode = self.fetch();
@@ -47,16 +56,10 @@ impl CPU {
         let instructions = get_instructions();
         let instruction = instructions.iter().find(|i| i.opcode == opcode as u16);
 
-        // debug!("{:?}", instruction);
+        debug!("{:?}", instruction);
         let pc = match instruction {
             Some(i) => {
-                // debug stuff
-                let a = &self.mmu.cartridge
-                    [self.reg.pc as usize..self.reg.pc as usize + i.length as usize];
-                #[allow(clippy::format_collect)]
-                let instr_bytes: String = a.iter().map(|b| format!("{:#02x} ", b)).collect();
-                debug!(instr_bytes);
-
+                self.dbg_print_bytes(i);
                 i.run(self)
             }
 
@@ -133,32 +136,16 @@ impl CPU {
     }
 
     pub fn print_reg(&self) {
-        trace!("[****************************************************]");
         trace!("Registers (hex):");
-        trace!(
-            "A: {:#04x} F: {:#04x} B: {:#04x} C: {:#04x} D: {:#04x} E: {:#04x} H: {:#04x} L: {:#04x}",
-            self.reg.a,
-            self.reg.f,
-            self.reg.b,
-            self.reg.c,
-            self.reg.d,
-            self.reg.e,
-            self.reg.h,
-            self.reg.l
-        );
+        trace!("A: {:#04x}     F: {:#04x}", self.reg.a, self.reg.f);
+        trace!("B: {:#04x}     C: {:#04x}", self.reg.b, self.reg.c);
+        trace!("D: {:#04x}     E: {:#04x}", self.reg.d, self.reg.e);
+        trace!("H: {:#04x}     L: {:#04x}", self.reg.h, self.reg.l);
 
         trace!("Registers (bin):");
-        trace!(
-            "A: {:#010b} F: {:#010b} B: {:#010b} C: {:#010b} D: {:#010b} E: {:#010b} H: {:#010b} L: {:#010b}",
-            self.reg.a,
-            self.reg.f,
-            self.reg.b,
-            self.reg.c,
-            self.reg.d,
-            self.reg.e,
-            self.reg.h,
-            self.reg.l
-        );
-        trace!("[****************************************************]");
+        trace!("A: {:08b} F: {:08b}", self.reg.a, self.reg.f);
+        trace!("B: {:08b} C: {:08b}", self.reg.b, self.reg.c);
+        trace!("D: {:08b} E: {:08b}", self.reg.d, self.reg.e);
+        trace!("H: {:08b} L: {:08b}", self.reg.h, self.reg.l);
     }
 }

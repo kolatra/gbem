@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace};
 
 use hardware::{cpu::CPU, load_boot_rom, GPU, LOG_LINES, MMU, SPAMMY_LOGS};
 
@@ -27,6 +27,7 @@ fn main() {
             Ok(cpu_state) => {
                 // update everything else
                 // with new memory and cpu state
+                trace!("received new cpu state")
             }
 
             Err(e) => {
@@ -58,7 +59,7 @@ fn setup_thread(cpu: Arc<RwLock<CPU>>) -> Receiver<Arc<RwLock<CPU>>> {
         let _ = cpu.write().map(|mut c| c.cycle());
 
         cpu_sender.send(Arc::clone(&cpu)).unwrap();
-        info!("sending");
+        trace!("sent new cpu state");
 
         thread::sleep(Duration::from_millis(500));
     });

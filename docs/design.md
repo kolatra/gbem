@@ -19,8 +19,7 @@ The gameboy has a 16-bit address bus, 0x0000 - 0xFFFF
 4000 - 7fff ~ 16Kb rom bank 01~NN              // Switchable bank via memory mapper
 8000 - 9fff ~ 8kb video RAM
 a000 - bfff ~ 8kb external ram                 // From cartridge, switchable bank if any
-c000 - cfff ~ 4kb work RAM
-d000 - dfff ~ 4kb work RAM
+c000 - dfff ~ 8kb work RAM
 e000 - fdff ~ Mirror of c000 - ddff (ECHO RAM)
 fe00 - fe9f ~ Object attribute memory (OAM)
 fea0 - feff ~ Not usable area                  // free area lets gooooo

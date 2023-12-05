@@ -6,6 +6,8 @@ use std::io::ErrorKind::InvalidData;
 use tracing::{debug, error, info, trace, warn};
 
 pub mod cpu;
+pub mod instructions;
+pub mod mem;
 
 #[cfg(test)]
 mod tests;
@@ -13,6 +15,7 @@ mod tests;
 // TODO have a config file or CLI input for these?
 pub const SPAMMY_LOGS: bool = true;
 pub const LOG_LINES: bool = true;
+
 pub const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
 pub const MACHINE_FREQ: usize = 1048576; // 1.048576 MHz - 1/4 of the clock frequency
 pub const FPS: usize = 60;
@@ -129,26 +132,6 @@ struct Interrupts {
     flag: u8,
 }
 
-// maybe idk
-trait Memory {
-    fn read(&self, address: u16) -> u8;
-    fn write(&mut self, address: u16, value: u8);
-
-    fn read_word(&self, address: u16) -> u16 {
-        let upper = self.read(address);
-        let lower = self.read(address + 1);
-
-        (upper as u16) << 8 | lower as u16
-    }
-
-    fn write_word(&mut self, address: u16, value: u16) {
-        let upper = (value >> 8) as u8;
-        let lower = value as u8;
-        self.write(address, upper);
-        self.write(address + 1, lower);
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct MMU {
     w_ram: Vec<u8>, // Work RAM
@@ -259,11 +242,11 @@ impl MMU {
 }
 
 #[derive(Debug, Clone)]
-struct Instruction {
-    mnemonic: &'static str,
-    opcode: u16, // NOTE: this was a u32, but u16 is probably fine, keep an eye
-    cycles: i8,
-    length: i8,
+pub struct Instruction {
+    pub mnemonic: &'static str,
+    pub opcode: u16, // NOTE: this was a u32, but u16 is probably fine, keep an eye
+    pub cycles: i8,
+    pub length: i8,
     handler: fn(cpu: &mut cpu::CPU) -> ProgramCounter,
 }
 
@@ -297,6 +280,18 @@ fn get_instructions() -> Vec<Instruction> {
             },
         },
         Instruction {
+            mnemonic: "LD HL, d16",
+            opcode: 0x21,
+            cycles: 3,
+            length: 3,
+            handler: |cpu| {
+                let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
+                cpu.reg.h = (d16 >> 8) as u8;
+                cpu.reg.l = d16 as u8;
+                ProgramCounter::Skip(3)
+            },
+        },
+        Instruction {
             mnemonic: "LD SP, d16",
             opcode: 0x31,
             cycles: 3,
@@ -305,6 +300,18 @@ fn get_instructions() -> Vec<Instruction> {
                 let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
                 cpu.reg.sp = d16;
                 ProgramCounter::Skip(3)
+            },
+        },
+        Instruction {
+            mnemonic: "LD (HL-), A",
+            opcode: 0x32,
+            cycles: 2,
+            length: 1,
+            handler: |cpu| {
+                let hl = cpu.reg.h as u16 + (cpu.reg.l as u16) << 8;
+                cpu.mmu.write(hl, cpu.reg.a);
+                cpu.reg.l = cpu.reg.l.wrapping_sub(1);
+                ProgramCounter::Next
             },
         },
         Instruction {
