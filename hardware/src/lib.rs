@@ -51,13 +51,6 @@ pub const JUMP_VECTORS: [u8; 12] = [
     0x00, 0x08, 0x10, 0x20, 0x28, 0x30, 0x38, 0x40, 0x48, 0x50, 0x58, 0x60,
 ];
 
-#[derive(Debug, Clone, Copy)]
-pub enum ProgramCounter {
-    Next,
-    Skip(u8),
-    Pause,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FlagBit {
     Z = 7,

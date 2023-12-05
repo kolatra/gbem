@@ -1,5 +1,3 @@
-use crate::ProgramCounter;
-
 use super::Instruction;
 
 pub fn get() -> Vec<Instruction> {
@@ -13,7 +11,6 @@ pub fn get() -> Vec<Instruction> {
                 let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
                 cpu.reg.h = (d16 >> 8) as u8;
                 cpu.reg.l = d16 as u8;
-                ProgramCounter::Skip(3)
             },
         },
         Instruction {
@@ -24,7 +21,6 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
                 cpu.reg.sp = d16;
-                ProgramCounter::Skip(3)
             },
         },
         Instruction {
@@ -32,7 +28,7 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x32,
             cycles: 2,
             length: 1,
-            handler: |cpu| ProgramCounter::Next,
+            handler: |cpu| (),
         },
     ]
 }

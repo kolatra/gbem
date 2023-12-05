@@ -12,7 +12,7 @@ fn main() {
             continue;
         }
 
-        let instruction = instructions.iter().find(|i| i.opcode == *byte as u16);
+        let instruction = instructions.iter().find(|i| i.opcode == *byte as u32);
         match instruction {
             Some(i) => {
                 println!("{:#04x} {}", byte, i.mnemonic);

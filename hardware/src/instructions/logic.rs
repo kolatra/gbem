@@ -1,5 +1,3 @@
-use crate::ProgramCounter;
-
 use super::Instruction;
 
 pub fn get() -> Vec<Instruction> {
@@ -11,7 +9,6 @@ pub fn get() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 cpu.reg.a ^= cpu.reg.a;
-                ProgramCounter::Next
             },
         },
         Instruction {
@@ -21,7 +18,6 @@ pub fn get() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 cpu.reg.a ^= cpu.reg.b;
-                ProgramCounter::Next
             },
         },
         Instruction {
@@ -31,7 +27,6 @@ pub fn get() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 cpu.add(cpu.reg.b, false);
-                ProgramCounter::Next
             },
         },
         Instruction {
@@ -41,7 +36,6 @@ pub fn get() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 cpu.sub(cpu.reg.b, false);
-                ProgramCounter::Next
             },
         },
     ]

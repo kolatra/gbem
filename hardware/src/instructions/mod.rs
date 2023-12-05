@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use crate::{cpu::CPU, ProgramCounter};
+use crate::cpu::CPU;
 
 pub fn get() -> &'static Vec<Instruction> {
     static INS: OnceLock<Vec<Instruction>> = OnceLock::new();
@@ -19,15 +19,19 @@ pub fn get() -> &'static Vec<Instruction> {
 // https://gekkio.fi/files/gb-docs/gbctr.pdf
 #[derive(Debug, Clone)]
 pub struct Instruction {
+    /// Name of the instruction
     pub mnemonic: &'static str,
-    pub opcode: u16, // NOTE: this was a u32, but u16 is probably fine, keep an eye
-    pub cycles: i8,
-    pub length: i8,
-    handler: fn(cpu: &mut CPU) -> ProgramCounter,
+    /// Opcode
+    pub opcode: u32,
+    /// Cycles to execute
+    pub cycles: u16,
+    /// Length in bytes
+    pub length: u16,
+    handler: fn(cpu: &mut CPU),
 }
 
 impl Instruction {
-    pub fn run(&self, cpu: &mut CPU) -> ProgramCounter {
+    pub fn run(&self, cpu: &mut CPU) {
         (self.handler)(cpu)
     }
 }

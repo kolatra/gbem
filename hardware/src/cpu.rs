@@ -1,5 +1,5 @@
 use crate::{
-    FlagBit, ProgramCounter, Registers, GPU, MMU, SPAMMY_LOGS, instructions::{self, Instruction},
+    FlagBit, Registers, GPU, MMU, SPAMMY_LOGS, instructions::{self, Instruction},
 };
 use tracing::{debug, info, trace, warn};
 
@@ -42,7 +42,7 @@ impl CPU {
         let pc = self.reg.pc;
         let opcode = self.mmu.read(pc);
 
-        match instructions::get().iter().find(|i| i.opcode == opcode as u16) {
+        match instructions::get().iter().find(|i| i.opcode == opcode.into()) {
             Some(i) => {
                 self.dbg_print_bytes(i);
                 debug!("opcode: {:#04x}", opcode);
@@ -64,14 +64,13 @@ impl CPU {
         let opcode = self.fetch();
 
         debug!("{:?}", opcode);
-        let pc = opcode.run(self);
+        opcode.run(self);
 
-        debug!("pc: {:?}", pc);
-        match pc {
-            ProgramCounter::Next => self.reg.pc += 2,
-            ProgramCounter::Skip(i) => self.reg.pc += i as u16,
-            ProgramCounter::Pause => warn!(self.reg.pc, "paused"),
-        };
+        if opcode.length == 1 {
+            self.reg.pc += 2;
+        } else {
+            self.reg.pc += opcode.length;
+        }
 
         self.print_reg()
     }
