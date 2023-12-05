@@ -3,7 +3,7 @@ use hardware::instructions;
 fn main() {
     let bytes = include_bytes!("../DMG_ROM.bin").to_vec();
     let instructions = instructions::get();
-    
+
     let mut skip_count = 0;
     // 0x31 0xff 0xfe LD SP, d16
     for byte in bytes {

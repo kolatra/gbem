@@ -1,6 +1,7 @@
-use crate::{get_instructions, FlagBit, ProgramCounter, Registers, GPU, MMU, SPAMMY_LOGS, Instruction};
+use crate::{
+    get_instructions, FlagBit, Instruction, ProgramCounter, Registers, GPU, MMU, SPAMMY_LOGS,
+};
 use tracing::{debug, info, trace, warn};
-
 
 #[derive(Debug, Clone, Default)]
 pub struct CPU {
@@ -43,7 +44,7 @@ impl CPU {
 
     fn dbg_print_bytes(&self, i: &Instruction) {
         let pc = self.reg.pc as usize;
-        let a = &self.mmu.cartridge [pc..pc + i.length as usize];
+        let a = &self.mmu.cartridge[pc..pc + i.length as usize];
         #[allow(clippy::format_collect)]
         let instr_bytes: String = a.iter().map(|b| format!("{:#02x} ", b)).collect();
         debug!(instr_bytes);

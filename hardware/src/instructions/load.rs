@@ -34,9 +34,7 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x32,
             cycles: 2,
             length: 1,
-            handler: |cpu| {
-                ProgramCounter::Next
-            },
-        }
+            handler: |cpu| ProgramCounter::Next,
+        },
     ]
 }

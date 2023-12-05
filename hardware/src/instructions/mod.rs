@@ -31,9 +31,9 @@ impl Instruction {
     }
 }
 
-mod load;
-mod logic;
-mod rotate;
 mod bits;
 mod control;
 mod jump;
+mod load;
+mod logic;
+mod rotate;
