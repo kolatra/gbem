@@ -1,5 +1,5 @@
 use crate::{
-    get_instructions, FlagBit, Instruction, ProgramCounter, Registers, GPU, MMU, SPAMMY_LOGS,
+    FlagBit, ProgramCounter, Registers, GPU, MMU, SPAMMY_LOGS, instructions::{self, Instruction},
 };
 use tracing::{debug, info, trace, warn};
 
@@ -34,12 +34,22 @@ impl CPU {
         value
     }
 
-    pub fn fetch(&self) -> u8 {
+    pub fn fetch(&self) -> Instruction {
         trace!("fetch");
         debug!("pc: {:#04x}", self.reg.pc);
         debug!("sp: {:#04x}", self.reg.sp);
+
         let pc = self.reg.pc;
-        self.mmu.read(pc)
+        let opcode = self.mmu.read(pc);
+
+        match instructions::get().iter().find(|i| i.opcode == opcode as u16) {
+            Some(i) => {
+                self.dbg_print_bytes(i);
+                debug!("opcode: {:#04x}", opcode);
+                i.clone()
+            },
+            None => panic!("Unknown opcode: {:#04x}", opcode),
+        }
     }
 
     fn dbg_print_bytes(&self, i: &Instruction) {
@@ -52,25 +62,15 @@ impl CPU {
     pub fn cycle(&mut self) {
         trace!("cycle");
         let opcode = self.fetch();
-        debug!("opcode: {:#04x}", opcode);
-        let instructions = get_instructions();
-        let instruction = instructions.iter().find(|i| i.opcode == opcode as u16);
 
-        debug!("{:?}", instruction);
-        let pc = match instruction {
-            Some(i) => {
-                self.dbg_print_bytes(i);
-                i.run(self)
-            }
-
-            None => panic!("Unknown opcode: {:#04x}", opcode),
-        };
+        debug!("{:?}", opcode);
+        let pc = opcode.run(self);
 
         debug!("pc: {:?}", pc);
         match pc {
             ProgramCounter::Next => self.reg.pc += 2,
             ProgramCounter::Skip(i) => self.reg.pc += i as u16,
-            ProgramCounter::Pause => warn!(opcode, self.reg.pc, "paused"),
+            ProgramCounter::Pause => warn!(self.reg.pc, "paused"),
         };
 
         self.print_reg()

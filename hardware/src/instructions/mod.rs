@@ -15,7 +15,8 @@ pub fn get() -> &'static Vec<Instruction> {
         v
     })
 }
-
+// https://meganesu.github.io/generate-gb-opcodes/
+// https://gekkio.fi/files/gb-docs/gbctr.pdf
 #[derive(Debug, Clone)]
 pub struct Instruction {
     pub mnemonic: &'static str,
