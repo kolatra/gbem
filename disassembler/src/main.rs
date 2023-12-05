@@ -23,7 +23,7 @@ fn main() {
         }
 
         let length = match instruction {
-            Some(i) => i.length,
+            Some(i) => i.length as usize,
             None => 0,
         };
 
@@ -33,8 +33,10 @@ fn main() {
 
         skip_count = length;
 
-        let ins_bytes = &bytes[i..i + length as usize];
-        let out = ins_bytes.iter().fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
+        let ins_bytes = &bytes[i..i + length];
+        let out = ins_bytes
+            .iter()
+            .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
         println!("{}", out);
     }
 }

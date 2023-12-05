@@ -1,7 +1,9 @@
 use crate::{
-    FlagBit, Registers, GPU, MMU, SPAMMY_LOGS, instructions::{self, Instruction},
+    instructions::{self, Instruction},
+    mem::MMU,
+    FlagBit, Registers, GPU,
 };
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, trace};
 
 #[derive(Debug, Clone, Default)]
 pub struct CPU {
@@ -42,12 +44,15 @@ impl CPU {
         let pc = self.reg.pc;
         let opcode = self.mmu.read(pc);
 
-        match instructions::get().iter().find(|i| i.opcode == opcode.into()) {
+        match instructions::get()
+            .iter()
+            .find(|i| i.opcode == opcode.into())
+        {
             Some(i) => {
                 self.dbg_print_bytes(i);
                 debug!("opcode: {:#04x}", opcode);
                 i.clone()
-            },
+            }
             None => panic!("Unknown opcode: {:#04x}", opcode),
         }
     }
@@ -55,7 +60,9 @@ impl CPU {
     fn dbg_print_bytes(&self, i: &Instruction) {
         let pc = self.reg.pc as usize;
         let ins_bytes = &self.mmu.cartridge[pc..pc + i.length as usize];
-        let out = ins_bytes.iter().fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
+        let out = ins_bytes
+            .iter()
+            .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
         debug!(out);
     }
 

@@ -8,7 +8,7 @@ use std::thread;
 use std::time::Duration;
 use tracing::{debug, error, info, trace};
 
-use hardware::{cpu::CPU, load_boot_rom, GPU, LOG_LINES, MMU, SPAMMY_LOGS};
+use hardware::{cpu::CPU, mem::load_boot_rom, GPU, LOG_LINES, SPAMMY_LOGS};
 
 fn main() {
     setup_logs();

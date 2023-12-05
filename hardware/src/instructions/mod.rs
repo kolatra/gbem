@@ -15,15 +15,13 @@ pub fn get() -> &'static Vec<Instruction> {
         v
     })
 }
+
 // https://meganesu.github.io/generate-gb-opcodes/
 // https://gekkio.fi/files/gb-docs/gbctr.pdf
 #[derive(Debug, Clone)]
 pub struct Instruction {
-    /// Name of the instruction
     pub mnemonic: &'static str,
-    /// Opcode
     pub opcode: u32,
-    /// Cycles to execute
     pub cycles: u16,
     /// Length in bytes
     pub length: u16,
