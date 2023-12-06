@@ -4,6 +4,9 @@ use tracing::warn;
 
 pub mod cpu;
 pub mod instructions;
+/// Macros for some instructions that are logically 
+/// the same but act on different registers/locations
+pub mod macros;
 pub mod mem;
 
 // TODO have a config file or CLI input for these?

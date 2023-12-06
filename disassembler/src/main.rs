@@ -31,8 +31,7 @@ fn main() {
             }
 
             None => {
-                info!("{:#04x}", byte);
-                info!("Unknown opcode");
+                info!("{:#04x}: Unknown", byte);
 
                 break;
             }

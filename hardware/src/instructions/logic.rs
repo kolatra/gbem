@@ -1,22 +1,16 @@
-use super::Instruction;
+use crate::{inc_reg, xor_reg};
 
-macro_rules! inc_reg {
-    ($mnemonic:ident, $opcode:expr, $reg:ident) => {
-        Instruction {
-            mnemonic: stringify!($mnemonic),
-            opcode: $opcode,
-            cycles: 1,
-            length: 1,
-            handler: |cpu| {
-                cpu.reg.$reg = cpu.reg.$reg.wrapping_add(1);
-            },
-        }
-    };
-}
+use super::Instruction;
 
 pub fn get() -> Vec<Instruction> {
     vec![
+        inc_reg!(INC_A, 0x3C, a),
+        inc_reg!(INC_B, 0x04, b),
         inc_reg!(INC_C, 0x0C, c),
+        inc_reg!(INC_D, 0x14, d),
+        inc_reg!(INC_E, 0x1C, e),
+        inc_reg!(INC_H, 0x24, h),
+        inc_reg!(INC_L, 0x2C, l),
         Instruction {
             mnemonic: "INC DE",
             opcode: 0x13,
@@ -29,24 +23,13 @@ pub fn get() -> Vec<Instruction> {
                 }
             },
         },
-        Instruction {
-            mnemonic: "XOR A",
-            opcode: 0xAF,
-            cycles: 1,
-            length: 1,
-            handler: |cpu| {
-                cpu.reg.a ^= cpu.reg.a;
-            },
-        },
-        Instruction {
-            mnemonic: "XOR B",
-            opcode: 0xA8,
-            cycles: 1,
-            length: 1,
-            handler: |cpu| {
-                cpu.reg.a ^= cpu.reg.b;
-            },
-        },
+        xor_reg!(XOR_A, 0xAF, a),
+        xor_reg!(XOR_B, 0xA8, b),
+        xor_reg!(XOR_C, 0xA9, c),
+        xor_reg!(XOR_D, 0xAA, d),
+        xor_reg!(XOR_E, 0xAB, e),
+        xor_reg!(XOR_H, 0xAC, h),
+        xor_reg!(XOR_L, 0xAD, l),
         Instruction {
             mnemonic: "ADD A,B",
             opcode: 0x80,
