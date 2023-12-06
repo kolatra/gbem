@@ -1,7 +1,7 @@
 use std::fs;
 use std::io::ErrorKind::InvalidData;
 
-use tracing::{info, trace, warn};
+use tracing::{debug, info, warn};
 
 use crate::{Interrupts, Timer, BOOT_ROM, MAX_ROM_SIZE, NINTENDO_HEADER, RAM_SIZE};
 
@@ -13,14 +13,14 @@ trait Memory {
         let upper = self.read(address);
         let lower = self.read(address + 1);
 
-        (upper as u16) << 8 | lower as u16
+        (lower as u16) << 8 | upper as u16
     }
 
     fn write_word(&mut self, address: u16, value: u16) {
         let upper = (value >> 8) as u8;
         let lower = value as u8;
-        self.write(address, upper);
-        self.write(address + 1, lower);
+        self.write(address, lower);
+        self.write(address + 1, upper);
     }
 }
 
@@ -61,7 +61,7 @@ impl MMU {
 
     pub fn read(&self, address: u16) -> u8 {
         let address = address as usize;
-        trace!("read: {:#04x}", address);
+        debug!("read: {:#04x}", address);
 
         match address {
             0x0000..=0x7FFF => self.cartridge[address],
@@ -123,14 +123,17 @@ impl MMU {
         let upper = self.read(address);
         let lower = self.read(address + 1);
 
-        (upper as u16) << 8 | lower as u16
+        // In 2-byte instructions, the first byte of immediate
+        // data is the lower byte and the second byte is
+        // the upper byte.
+        (lower as u16) << 8 | upper as u16
     }
 
-    fn write_word(&mut self, address: u16, value: u16) {
+    pub fn write_word(&mut self, address: u16, value: u16) {
         let upper = (value >> 8) as u8;
         let lower = value as u8;
-        self.write(address, upper);
-        self.write(address + 1, lower);
+        self.write(address, lower);
+        self.write(address + 1, upper);
     }
 }
 

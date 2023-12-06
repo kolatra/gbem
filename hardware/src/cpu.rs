@@ -3,7 +3,7 @@ use crate::{
     mem::MMU,
     FlagBit, Registers, GPU,
 };
-use tracing::{debug, trace};
+use tracing::{debug, info, trace};
 
 #[derive(Debug, Clone, Default)]
 pub struct CPU {
@@ -42,16 +42,18 @@ impl CPU {
         debug!("sp: {:#04x}", self.reg.sp);
 
         let pc = self.reg.pc;
-        let opcode = self.mmu.read(pc);
+        let mut opcode = self.mmu.read(pc);
 
-        match INSTRUCTIONS
-            .iter()
-            .find(|i| i.opcode == opcode.into())
-        {
+        if opcode == 0xCB {
+            info!("CB prefix");
+            opcode = self.mmu.read(pc + 1);
+        }
+
+        match INSTRUCTIONS.iter().find(|i| i.opcode == opcode.into()) {
             Some(i) => {
                 self.dbg_print_bytes(i);
                 debug!("opcode: {:#04x}", opcode);
-                i.clone()
+                *i
             }
             None => panic!("Unknown opcode: {:#04x}", opcode),
         }
@@ -68,15 +70,18 @@ impl CPU {
 
     pub fn cycle(&mut self) {
         trace!("cycle");
-        let opcode = self.fetch();
+        let instruction = self.fetch();
 
-        debug!("{:?}", opcode);
-        opcode.run(self);
+        debug!(
+            "{} - cycles: {} length: {}",
+            instruction.mnemonic, instruction.cycles, instruction.length
+        );
+        instruction.run(self);
 
-        if opcode.length == 1 {
+        if instruction.length == 1 {
             self.reg.pc += 2;
         } else {
-            self.reg.pc += opcode.length;
+            self.reg.pc += instruction.length;
         }
 
         self.print_reg()

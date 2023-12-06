@@ -18,7 +18,7 @@ pub static INSTRUCTIONS: LazyLock<Vec<Instruction>> = LazyLock::new(|| {
 
 // https://meganesu.github.io/generate-gb-opcodes/
 // https://gekkio.fi/files/gb-docs/gbctr.pdf
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Instruction {
     pub mnemonic: &'static str,
     pub opcode: u32,

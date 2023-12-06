@@ -1,13 +1,13 @@
-#![allow(clippy::eq_op, clippy::match_overlapping_arm)]
+#![allow(clippy::match_overlapping_arm)]
 #![feature(lazy_cell)]
-use tracing::error;
+use tracing::warn;
 
 pub mod cpu;
 pub mod instructions;
 pub mod mem;
 
 // TODO have a config file or CLI input for these?
-pub const SPAMMY_LOGS: bool = true;
+pub const SPAMMY_LOGS: bool = false;
 pub const LOG_LINES: bool = true;
 
 pub const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
@@ -101,7 +101,7 @@ impl Default for Registers {
 pub struct GPU {}
 impl GPU {
     pub fn new() -> Self {
-        error!("nice gpu nerd");
+        warn!("nice gpu nerd");
         Self {}
     }
 }
