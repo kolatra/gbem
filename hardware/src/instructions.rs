@@ -39,4 +39,7 @@ mod control;
 mod jump;
 mod load;
 mod logic;
+/// Macros for some instructions that are logically
+/// the same but act on different registers/locations
+mod macros;
 mod rotate;

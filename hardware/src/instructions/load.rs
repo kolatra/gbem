@@ -1,8 +1,6 @@
-use crate::{load_imm, load_r_into_r, load_8bit, load_16bit};
+use crate::{load_16bit, load_8bit, load_imm, load_r_into_r};
 
 use super::Instruction;
-
-
 
 pub fn get() -> Vec<Instruction> {
     vec![

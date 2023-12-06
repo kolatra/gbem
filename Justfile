@@ -7,3 +7,6 @@ da:
 
 run:
     cargo r --release -p front
+
+lint:
+    ./lint.sh
