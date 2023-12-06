@@ -5,7 +5,7 @@ use tracing::trace;
 use crate::cpu::CPU;
 
 pub static INSTRUCTIONS: LazyLock<Vec<Instruction>> = LazyLock::new(|| {
-    trace!("initializing instructions");
+    trace!("initializing instruction list");
     let mut v = Vec::new();
     v.append(&mut load::get());
     v.append(&mut logic::get());

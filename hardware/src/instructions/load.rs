@@ -1,9 +1,10 @@
-use crate::{load_16bit, load_8bit, load_imm, load_r_into_r};
+use crate::{load_16bit, load_8bit, load_imm, load_r_into_r, ld_a8_a};
 
 use super::Instruction;
 
 pub fn get() -> Vec<Instruction> {
     vec![
+        ld_a8_a!(LDH_A8_A, 0xE0),
         load_imm!(LD_A_D8, 0x3E, a),
         load_imm!(LD_C_D8, 0x0E, c),
         load_r_into_r!(LD_B_A, 0x47, b, a),
@@ -90,7 +91,6 @@ mod tests {
     fn test_load_16bit() {
         let mut cpu = CPU::new();
         let instruction = load_16bit!(LD_SP_D16, 0x31, sp);
-        // PC: 0x0100
         cpu.mmu.write_word(0x0101, 0x1234);
         instruction.run(&mut cpu);
         assert_eq!(cpu.reg.sp, 0x1234);

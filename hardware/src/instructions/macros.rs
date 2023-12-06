@@ -6,9 +6,7 @@ macro_rules! inc_reg {
             opcode: $opcode,
             cycles: 1,
             length: 1,
-            handler: |cpu| {
-                cpu.reg.$reg = cpu.reg.$reg.wrapping_add(1);
-            },
+            handler: |cpu| cpu.reg.$reg = cpu.reg.$reg.wrapping_add(1),
         }
     };
 }
@@ -21,9 +19,7 @@ macro_rules! xor_reg {
             opcode: $opcode,
             cycles: 1,
             length: 1,
-            handler: |cpu| {
-                cpu.reg.a ^= cpu.reg.$reg;
-            },
+            handler: |cpu| cpu.reg.a ^= cpu.reg.$reg,
         }
     };
 }
@@ -36,8 +32,22 @@ macro_rules! load_imm {
             opcode: $opcode,
             cycles: 2,
             length: 2,
+            handler: |cpu| cpu.reg.$reg = cpu.mmu.read(cpu.reg.pc + 1),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! ld_a8_a {
+    ($mnemonic:ident, $opcode:expr) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 3,
+            length: 2,
             handler: |cpu| {
-                cpu.reg.$reg = cpu.mmu.read(cpu.reg.pc + 1);
+                let a8 = cpu.mmu.read(cpu.reg.pc + 1) as u16;
+                cpu.mmu.write(0xFF00 + a8, cpu.reg.a);
             },
         }
     };
@@ -51,9 +61,7 @@ macro_rules! load_8bit {
             opcode: $opcode,
             cycles: 1,
             length: 1,
-            handler: |cpu| {
-                cpu.reg.a = cpu.reg.$reg;
-            },
+            handler: |cpu| cpu.reg.a = cpu.reg.$reg,
         }
     };
 }
@@ -66,9 +74,7 @@ macro_rules! load_r_into_r {
             opcode: $opcode,
             cycles: 1,
             length: 1,
-            handler: |cpu| {
-                cpu.reg.$reg1 = cpu.reg.$reg2;
-            },
+            handler: |cpu| cpu.reg.$reg1 = cpu.reg.$reg2,
         }
     };
 }

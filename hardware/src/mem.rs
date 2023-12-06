@@ -1,11 +1,11 @@
 use std::fs;
 use std::io::ErrorKind::InvalidData;
 
-use tracing::{debug, info, warn};
+use tracing::{debug, info, warn, trace};
 
 use crate::{Interrupts, Timer, BOOT_ROM, MAX_ROM_SIZE, NINTENDO_HEADER, RAM_SIZE};
 
-trait Memory {
+pub trait Memory {
     fn read(&self, address: u16) -> u8;
     fn write(&mut self, address: u16, value: u8);
 
@@ -29,6 +29,7 @@ pub struct MMU {
     w_ram: Vec<u8>, // Work RAM
     v_ram: Vec<u8>, // Video RAM
     pub cartridge: Vec<u8>,
+    stack: Vec<u8>, // HRAM
     timer: Timer,
     // https://gbdev.io/pandocs/Joypad_Input.html#ff00--p1joyp-joypad
     joypad: u8,
@@ -44,6 +45,8 @@ impl MMU {
             w_ram: vec![0; RAM_SIZE],
             v_ram: vec![0; RAM_SIZE],
             cartridge: vec![0; MAX_ROM_SIZE],
+            // 126 bytes for the size of the stack
+            stack: vec![0; 0x7E],
             timer: Timer::default(),
             joypad: 0,
             divider_reg: 0,
@@ -57,7 +60,7 @@ impl MMU {
     const VRAM_START: usize = 0x8000;
     const WRAM_START: usize = 0xC000;
     const ERAM_START: usize = 0xE000;
-    const HRAM_START: usize = 0xFF80;
+    const STACK_START: usize = 0xFF80;
 
     pub fn read(&self, address: u16) -> u8 {
         let address = address as usize;
@@ -79,7 +82,8 @@ impl MMU {
             0xFF0F => self.interrupts.flag,
             0xFF10..=0xFF26 => 1, // Sound control registers
             0xFF00..=0xFF7F => 1, // I/O registers
-            0xFF80..=0xFFFE => 1, // High RAM
+            //
+            0xFF80..=0xFFFE => self.stack[address - Self::STACK_START],
             0xFFFF => self.interrupts.enable,
             _ => 0,
         }
@@ -110,7 +114,10 @@ impl MMU {
                 value, address
             ),
             0xFF00..=0xFF7F => info!("Wrote {:x} to i/o registers at {:x}", value, address),
-            0xFF80..=0xFFFE => info!("Wrote {:x} to high RAM at {:x}", value, address),
+            0xFF80..=0xFFFE => {
+                trace!("Pushed {:x} to the stack at {:x}", value, address);
+                self.stack[address - Self::STACK_START] = value
+            },
             0xFFFF => self.interrupts.enable = value,
             _ => warn!(
                 "Tried to write {:x} to {:x} (outside of address space)",

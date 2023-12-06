@@ -55,7 +55,7 @@ pub fn get() -> Vec<Instruction> {
 mod tests {
     use super::*;
     use crate::cpu::CPU;
-    use crate::FlagBit::*;
+    use crate::reg::FlagBit::*;
 
     #[test]
     fn test_add() {

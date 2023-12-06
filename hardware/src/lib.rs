@@ -4,11 +4,11 @@ use tracing::warn;
 
 pub mod cpu;
 pub mod instructions;
-
 pub mod mem;
+pub mod reg;
 
 // TODO have a config file or CLI input for these?
-pub const SPAMMY_LOGS: bool = false;
+pub const SPAMMY_LOGS: bool = true;
 pub const LOG_LINES: bool = true;
 
 pub const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
@@ -45,58 +45,6 @@ pub const BOOT_ROM: [u8; 256] = [
 pub const JUMP_VECTORS: [u8; 12] = [
     0x00, 0x08, 0x10, 0x20, 0x28, 0x30, 0x38, 0x40, 0x48, 0x50, 0x58, 0x60,
 ];
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FlagBit {
-    Z = 7,
-    N = 6,
-    H = 5,
-    C = 4,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Registers {
-    a: u8,
-    f: u8,
-    b: u8,
-    c: u8,
-    d: u8,
-    e: u8,
-    h: u8,
-    l: u8,
-
-    pc: u16,
-    sp: u16,
-}
-
-impl Registers {
-    fn new() -> Self {
-        Self {
-            a: 0x01,
-            // FIXME:
-            // If the header checksum is 0,
-            // then the carry and half-carry flags are clear;
-            // otherwise, they are both set.
-            // Always set the Z flag.
-            f: 0x80,
-            b: 0x00,
-            c: 0x13,
-            d: 0x00,
-            e: 0xD8,
-            h: 0x01,
-            l: 0x4D,
-
-            pc: 0x0100,
-            sp: 0xFFFE,
-        }
-    }
-}
-
-impl Default for Registers {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 #[derive(Debug, Clone, Default)]
 pub struct GPU {}
