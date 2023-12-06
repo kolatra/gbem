@@ -1,7 +1,9 @@
 use crate::{
     instructions::{Instruction, INSTRUCTIONS},
     mem::MMU,
-    reg::FlagBit, reg::Registers, GPU,
+    reg::FlagBit,
+    reg::Registers,
+    GPU,
 };
 use tracing::{debug, info, trace};
 

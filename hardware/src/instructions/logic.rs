@@ -1,9 +1,19 @@
-use crate::{inc_reg, xor_reg};
+use crate::{dec_reg, inc_pair, inc_reg, reg::FlagBit, xor_reg};
 
 use super::Instruction;
 
 pub fn get() -> Vec<Instruction> {
     vec![
+        Instruction {
+            mnemonic: "CP d8",
+            opcode: 0xFE,
+            cycles: 2,
+            length: 2,
+            handler: |cpu| {
+                let cmp = cpu.reg.a - cpu.mmu.read(cpu.reg.pc + 1);
+                cpu.set_flag(FlagBit::Z, cmp == 0);
+            },
+        },
         inc_reg!(INC_A, 0x3C, a),
         inc_reg!(INC_B, 0x04, b),
         inc_reg!(INC_C, 0x0C, c),
@@ -11,6 +21,10 @@ pub fn get() -> Vec<Instruction> {
         inc_reg!(INC_E, 0x1C, e),
         inc_reg!(INC_H, 0x24, h),
         inc_reg!(INC_L, 0x2C, l),
+        dec_reg!(DEC_A, 0x3D, a),
+        dec_reg!(DEC_B, 0x05, b),
+        dec_reg!(DEC_C, 0x0D, c),
+        inc_pair!(INC_HL, 0x23, HL),
         Instruction {
             mnemonic: "INC DE",
             opcode: 0x13,

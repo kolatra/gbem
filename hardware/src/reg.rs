@@ -27,16 +27,49 @@ pub enum Pair {
     BC,
     DE,
     HL,
-    SP,
-    PC
+}
+
+impl Registers {
+    pub fn read_pair(&self, pair: Pair) -> u16 {
+        match pair {
+            Pair::AF => (self.a as u16) << 8 | self.f as u16,
+            Pair::BC => (self.b as u16) << 8 | self.c as u16,
+            Pair::DE => (self.d as u16) << 8 | self.e as u16,
+            Pair::HL => (self.h as u16) << 8 | self.l as u16,
+        }
+    }
+
+    pub fn write_pair(&mut self, pair: Pair, value: u16) {
+        let higher = (value >> 8) as u8;
+        let lower = value as u8;
+
+        match pair {
+            Pair::AF => {
+                self.a = higher;
+                self.f = lower;
+            }
+            Pair::BC => {
+                self.b = higher;
+                self.c = lower;
+            }
+            Pair::DE => {
+                self.d = higher;
+                self.e = lower;
+            }
+            Pair::HL => {
+                self.h = higher;
+                self.l = lower;
+            }
+        }
+    }
 }
 
 impl Memory for Registers {
-    fn read(&self, _address: u16) -> u8 {
+    fn read(&self, _: u16) -> u8 {
         todo!()
     }
 
-    fn write(&mut self, _address: u16, _value: u8) {
+    fn write(&mut self, _: u16, _value: u8) {
         todo!()
     }
 }

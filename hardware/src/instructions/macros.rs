@@ -12,6 +12,32 @@ macro_rules! inc_reg {
 }
 
 #[macro_export]
+macro_rules! dec_reg {
+    ($mnemonic:ident, $opcode:expr, $reg:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 1,
+            length: 1,
+            handler: |cpu| cpu.reg.$reg = cpu.reg.$reg.wrapping_sub(1),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! inc_pair {
+    ($mnemonic:ident, $opcode:expr, $pair:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 2,
+            length: 1,
+            handler: |_cpu| todo!(),
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! xor_reg {
     ($mnemonic:ident, $opcode:expr, $reg:ident) => {
         Instruction {
@@ -54,7 +80,7 @@ macro_rules! ld_a8_a {
 }
 
 #[macro_export]
-macro_rules! load_8bit {
+macro_rules! load_a_8bit {
     ($mnemonic:ident, $opcode:expr, $reg:ident) => {
         Instruction {
             mnemonic: stringify!($mnemonic),
@@ -62,6 +88,19 @@ macro_rules! load_8bit {
             cycles: 1,
             length: 1,
             handler: |cpu| cpu.reg.a = cpu.reg.$reg,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! load_8bit {
+    ($mnemonic:ident, $opcode:expr, $from:ident, $to:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 1,
+            length: 1,
+            handler: |cpu| cpu.reg.$to = cpu.reg.$from,
         }
     };
 }

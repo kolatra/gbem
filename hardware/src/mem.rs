@@ -1,7 +1,7 @@
 use std::fs;
 use std::io::ErrorKind::InvalidData;
 
-use tracing::{debug, info, warn, trace};
+use tracing::{debug, info, trace, warn};
 
 use crate::{Interrupts, Timer, BOOT_ROM, MAX_ROM_SIZE, NINTENDO_HEADER, RAM_SIZE};
 
@@ -117,7 +117,7 @@ impl MMU {
             0xFF80..=0xFFFE => {
                 trace!("Pushed {:x} to the stack at {:x}", value, address);
                 self.stack[address - Self::STACK_START] = value
-            },
+            }
             0xFFFF => self.interrupts.enable = value,
             _ => warn!(
                 "Tried to write {:x} to {:x} (outside of address space)",
