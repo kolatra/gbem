@@ -106,9 +106,7 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0xCE,
             cycles: 2,
             length: 2,
-            handler: |cpu| {
-                cpu.sub(cpu.reg.b, false);
-            },
+            handler: |_cpu| todo!(),
         },
     ]
 }
