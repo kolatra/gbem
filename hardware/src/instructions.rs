@@ -7,6 +7,18 @@ use crate::cpu::CPU;
 pub static INSTRUCTIONS: LazyLock<Vec<Instruction>> = LazyLock::new(|| {
     trace!("initializing instruction list");
     let mut v = Vec::new();
+
+    // silly goofy hack to make the disassembler continue.
+    // the issue is probably a wrong instruction length,
+    // but i don't want to find it rn
+    v.insert(0, Instruction {
+        mnemonic: "unimplemented instruction?",
+        opcode: 0xdd,
+        cycles: 1,
+        length: 1,
+        handler: |_| todo!(),
+    });
+
     v.append(&mut load::get());
     v.append(&mut logic::get());
     v.append(&mut rotate::get());

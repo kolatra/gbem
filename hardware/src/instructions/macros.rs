@@ -33,6 +33,12 @@ macro_rules! inc_pair {
             cycles: 2,
             length: 1,
             handler: |_cpu| todo!(),
+            /* handler: |cpu| {
+                cpu.reg.e = cpu.reg.e.wrapping_add(1);
+                if cpu.reg.e == 0 {
+                    cpu.reg.d = cpu.reg.d.wrapping_add(1);
+                }
+            }, */
         }
     };
 }
@@ -124,6 +130,19 @@ macro_rules! subc {
             cycles: 1,
             length: 1,
             handler: |cpu| cpu.sub(cpu.reg.$reg, true),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! cp_r {
+    ($mnemonic:ident, $opcode:expr, $reg:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 2,
+            length: 1,
+            handler: |_cpu| todo!(),
         }
     };
 }

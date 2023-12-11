@@ -1,4 +1,4 @@
-use crate::{add, addc, dec_pair, dec_reg, inc_pair, inc_reg, reg::FlagBit, sub, subc, xor_reg};
+use crate::{add, addc, dec_pair, dec_reg, inc_pair, inc_reg, reg::FlagBit, sub, subc, xor_reg, cp_r};
 
 use super::Instruction;
 
@@ -28,20 +28,9 @@ pub fn get() -> Vec<Instruction> {
         dec_reg!(DEC_E, 0x1D, e),
         inc_pair!(INC_HL, 0x23, HL),
         inc_pair!(INC_BC, 0x03, BC),
+        inc_pair!(INC_DE, 0x13, DE),
         dec_pair!(DEC_HL, 0x2B, HL),
         dec_pair!(DEC_BC, 0x0B, BC),
-        Instruction {
-            mnemonic: "INC DE",
-            opcode: 0x13,
-            cycles: 2,
-            length: 1,
-            handler: |cpu| {
-                cpu.reg.e = cpu.reg.e.wrapping_add(1);
-                if cpu.reg.e == 0 {
-                    cpu.reg.d = cpu.reg.d.wrapping_add(1);
-                }
-            },
-        },
         xor_reg!(XOR_A, 0xAF, a),
         xor_reg!(XOR_B, 0xA8, b),
         xor_reg!(XOR_C, 0xA9, c),
@@ -49,6 +38,13 @@ pub fn get() -> Vec<Instruction> {
         xor_reg!(XOR_E, 0xAB, e),
         xor_reg!(XOR_H, 0xAC, h),
         xor_reg!(XOR_L, 0xAD, l),
+        cp_r!(CP_A_A, 0xBF, a),
+        cp_r!(CP_A_B, 0xB8, b),
+        cp_r!(CP_A_C, 0xB9, c),
+        cp_r!(CP_A_D, 0xBA, d),
+        cp_r!(CP_A_E, 0xBB, e),
+        cp_r!(CP_A_H, 0xBC, h),
+        cp_r!(CP_A_L, 0xBD, l),
         add!(ADD_A_A, 0x87, a),
         add!(ADD_A_B, 0x80, b),
         add!(ADD_A_C, 0x81, c),
