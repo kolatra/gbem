@@ -1,9 +1,13 @@
+use std::io::Write;
+
 use hardware::instructions::INSTRUCTIONS;
-use tracing::info;
+use tracing::{error, info};
 
 fn main() {
     setup_logs();
     let bytes = include_bytes!("../DMG_ROM.bin").to_vec();
+    info!("Saving bytes to file");
+    save_bytes(&bytes).expect("not sure how we got here");
 
     // 0x31 0xff 0xfe LD SP, d16
     let mut skip_count = 0;
@@ -25,14 +29,12 @@ fn main() {
 
         let length = match instruction {
             Some(i) => {
-                info!("{:#04x} {}", byte, i.mnemonic);
-
+                info!("{}", i.mnemonic);
                 i.length as usize
             }
 
             None => {
-                info!("{:#04x}: Unknown", byte);
-
+                error!("{} {:#04x}: Unknown", i, byte);
                 break;
             }
         };
@@ -45,16 +47,39 @@ fn main() {
                 .iter()
                 .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
             info!("{}", out);
-            info!("--------");
+        } else {
+            info!("{:#04x}", byte);
         }
+        info!("--------");
     }
 }
 
 fn setup_logs() {
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
-        .with_line_number(true)
+        // .with_line_number(true)
         .without_time()
         .with_max_level(tracing::Level::TRACE)
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
+}
+
+fn save_bytes(bytes: &[u8]) -> std::io::Result<()> {
+    let mut f = std::fs::File::create("./disassembler/DMG_ROM.txt").unwrap();
+    let mut counter = 0;
+
+    let output = bytes
+        .iter()
+        .map(|b| {
+            counter += 1;
+            format!("{:#04x}", b)
+                + if counter == 16 {
+                    counter = 0;
+                    "\n"
+                } else {
+                    " "
+                }
+        })
+        .fold(String::new(), |new_s, byte| new_s + &byte);
+
+    f.write_all(output.as_bytes())
 }

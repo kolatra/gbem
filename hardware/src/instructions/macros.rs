@@ -38,6 +38,19 @@ macro_rules! inc_pair {
 }
 
 #[macro_export]
+macro_rules! dec_pair {
+    ($mnemonic:ident, $opcode:expr, $pair:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 2,
+            length: 1,
+            handler: |_cpu| todo!(),
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! xor_reg {
     ($mnemonic:ident, $opcode:expr, $reg:ident) => {
         Instruction {
@@ -59,6 +72,32 @@ macro_rules! load_imm {
             cycles: 2,
             length: 2,
             handler: |cpu| cpu.reg.$reg = cpu.mmu.read(cpu.reg.pc + 1),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! add {
+    ($mnemonic:ident, $opcode:expr, $reg:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 1,
+            length: 1,
+            handler: |cpu| cpu.add(cpu.reg.$reg, false),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! addc {
+    ($mnemonic:ident, $opcode:expr, $reg:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 1,
+            length: 1,
+            handler: |cpu| cpu.add(cpu.reg.$reg, true),
         }
     };
 }

@@ -31,6 +31,13 @@ pub fn get() -> Vec<Instruction> {
             handler: |_cpu| todo!(),
         },
         Instruction {
+            mnemonic: "CALL Z, a16",
+            opcode: 0xCC,
+            cycles: 6, // 3 if not taken
+            length: 3,
+            handler: |_cpu| todo!(),
+        },
+        Instruction {
             mnemonic: "RST 7",
             opcode: 0xFF,
             cycles: 4,
@@ -41,6 +48,20 @@ pub fn get() -> Vec<Instruction> {
                 // cpu.reg.pc = 0x38;
                 cpu.reg.pc = 0x0138;
             },
+        },
+        Instruction {
+            mnemonic: "RET NZ",
+            opcode: 0xC0,
+            cycles: 5, // 2 if not taken
+            length: 1,
+            handler: |_cpu| todo!(),
+        },
+        Instruction {
+            mnemonic: "RET",
+            opcode: 0xC9,
+            cycles: 4,
+            length: 1,
+            handler: |_cpu| todo!(),
         },
     ]
 }

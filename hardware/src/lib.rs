@@ -1,4 +1,4 @@
-#![allow(clippy::match_overlapping_arm)]
+#![allow(clippy::match_overlapping_arm, clippy::self_assignment)]
 #![feature(lazy_cell)]
 use tracing::warn;
 

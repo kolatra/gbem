@@ -1,4 +1,4 @@
-use crate::{dec_reg, inc_pair, inc_reg, reg::FlagBit, xor_reg};
+use crate::{add, addc, dec_pair, dec_reg, inc_pair, inc_reg, reg::FlagBit, xor_reg};
 
 use super::Instruction;
 
@@ -24,7 +24,12 @@ pub fn get() -> Vec<Instruction> {
         dec_reg!(DEC_A, 0x3D, a),
         dec_reg!(DEC_B, 0x05, b),
         dec_reg!(DEC_C, 0x0D, c),
+        dec_reg!(DEC_D, 0x15, d),
+        dec_reg!(DEC_E, 0x1D, e),
         inc_pair!(INC_HL, 0x23, HL),
+        inc_pair!(INC_BC, 0x03, BC),
+        dec_pair!(DEC_HL, 0x2B, HL),
+        dec_pair!(DEC_BC, 0x0B, BC),
         Instruction {
             mnemonic: "INC DE",
             opcode: 0x13,
@@ -44,20 +49,34 @@ pub fn get() -> Vec<Instruction> {
         xor_reg!(XOR_E, 0xAB, e),
         xor_reg!(XOR_H, 0xAC, h),
         xor_reg!(XOR_L, 0xAD, l),
-        Instruction {
-            mnemonic: "ADD A,B",
-            opcode: 0x80,
-            cycles: 1,
-            length: 1,
-            handler: |cpu| {
-                cpu.add(cpu.reg.b, false);
-            },
-        },
+        add!(ADD_A_A, 0x87, a),
+        add!(ADD_A_B, 0x80, b),
+        add!(ADD_A_C, 0x81, c),
+        add!(ADD_A_D, 0x82, d),
+        add!(ADD_A_E, 0x83, e),
+        add!(ADD_A_H, 0x84, h),
+        add!(ADD_A_L, 0x85, l),
+        addc!(ADC_A_A, 0x8F, a),
+        addc!(ADC_A_B, 0x88, b),
+        addc!(ADC_A_C, 0x89, c),
+        addc!(ADC_A_D, 0x8A, d),
+        addc!(ADC_A_E, 0x8B, e),
+        addc!(ADC_A_H, 0x8C, h),
+        addc!(ADC_A_L, 0x8D, l),
         Instruction {
             mnemonic: "SUB A,B",
             opcode: 0x90,
             cycles: 1,
             length: 1,
+            handler: |cpu| {
+                cpu.sub(cpu.reg.b, false);
+            },
+        },
+        Instruction {
+            mnemonic: "ADC A, d8",
+            opcode: 0xCE,
+            cycles: 2,
+            length: 2,
             handler: |cpu| {
                 cpu.sub(cpu.reg.b, false);
             },
@@ -77,7 +96,7 @@ mod tests {
         let instructions = get();
         let instruction = instructions
             .iter()
-            .find(|i| i.mnemonic == "ADD A,B")
+            .find(|i| i.mnemonic == "ADD_A_B")
             .unwrap();
 
         cpu.reg.a = 0;
@@ -130,7 +149,7 @@ mod tests {
         let instructions = get();
         let instruction = instructions
             .iter()
-            .find(|i| i.mnemonic == "XOR A")
+            .find(|i| i.mnemonic == "XOR_A")
             .unwrap();
 
         cpu.reg.a = 124;
