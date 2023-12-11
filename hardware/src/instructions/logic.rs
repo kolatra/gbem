@@ -1,4 +1,4 @@
-use crate::{add, addc, dec_pair, dec_reg, inc_pair, inc_reg, reg::FlagBit, xor_reg};
+use crate::{add, addc, dec_pair, dec_reg, inc_pair, inc_reg, reg::FlagBit, sub, subc, xor_reg};
 
 use super::Instruction;
 
@@ -63,15 +63,18 @@ pub fn get() -> Vec<Instruction> {
         addc!(ADC_A_E, 0x8B, e),
         addc!(ADC_A_H, 0x8C, h),
         addc!(ADC_A_L, 0x8D, l),
-        Instruction {
-            mnemonic: "SUB A,B",
-            opcode: 0x90,
-            cycles: 1,
-            length: 1,
-            handler: |cpu| {
-                cpu.sub(cpu.reg.b, false);
-            },
-        },
+        sub!(SUB_B, 0x90, b),
+        sub!(SUB_C, 0x91, c),
+        sub!(SUB_D, 0x92, d),
+        sub!(SUB_E, 0x93, e),
+        sub!(SUB_H, 0x94, h),
+        sub!(SUB_L, 0x95, l),
+        subc!(SBC_A_B, 0x98, b),
+        subc!(SBC_A_C, 0x99, c),
+        subc!(SBC_A_D, 0x9A, d),
+        subc!(SBC_A_E, 0x9B, e),
+        subc!(SBC_A_H, 0x9C, h),
+        subc!(SBC_A_L, 0x9D, l),
         Instruction {
             mnemonic: "ADC A, d8",
             opcode: 0xCE,
@@ -120,10 +123,7 @@ mod tests {
     fn test_sub() {
         let mut cpu = CPU::new();
         let instructions = get();
-        let instruction = instructions
-            .iter()
-            .find(|i| i.mnemonic == "SUB A,B")
-            .unwrap();
+        let instruction = instructions.iter().find(|i| i.mnemonic == "SUB_B").unwrap();
 
         cpu.reg.a = 0;
         cpu.reg.b = 0;
@@ -143,14 +143,10 @@ mod tests {
     }
 
     #[test]
-    #[rustfmt::skip] // :)
     fn test_xor() {
         let mut cpu = CPU::new();
         let instructions = get();
-        let instruction = instructions
-            .iter()
-            .find(|i| i.mnemonic == "XOR_A")
-            .unwrap();
+        let instruction = instructions.iter().find(|i| i.mnemonic == "XOR_A").unwrap();
 
         cpu.reg.a = 124;
         instruction.run(&mut cpu);

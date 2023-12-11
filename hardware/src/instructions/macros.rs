@@ -103,6 +103,32 @@ macro_rules! addc {
 }
 
 #[macro_export]
+macro_rules! sub {
+    ($mnemonic:ident, $opcode:expr, $reg:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 1,
+            length: 1,
+            handler: |cpu| cpu.sub(cpu.reg.$reg, true),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! subc {
+    ($mnemonic:ident, $opcode:expr, $reg:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 1,
+            length: 1,
+            handler: |cpu| cpu.sub(cpu.reg.$reg, true),
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! ld_a8_a {
     ($mnemonic:ident, $opcode:expr) => {
         Instruction {
