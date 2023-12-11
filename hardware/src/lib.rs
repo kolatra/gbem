@@ -9,6 +9,7 @@ pub mod reg;
 
 // TODO have a config file or CLI input for these?
 pub const SPAMMY_LOGS: bool = true;
+pub const LOG_REGISTERS: bool = true;
 pub const LOG_LINES: bool = true;
 
 pub const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz

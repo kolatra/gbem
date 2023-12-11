@@ -70,6 +70,19 @@ macro_rules! xor_reg {
 }
 
 #[macro_export]
+macro_rules! and_reg {
+    ($mnemonic:ident, $opcode:expr, $reg:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 1,
+            length: 1,
+            handler: |_cpu| todo!(),
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! load_imm {
     ($mnemonic:ident, $opcode:expr, $reg:ident) => {
         Instruction {
@@ -142,7 +155,10 @@ macro_rules! cp_r {
             opcode: $opcode,
             cycles: 2,
             length: 1,
-            handler: |_cpu| todo!(),
+            handler: |cpu| {
+                let cmp = cpu.reg.a.wrapping_sub(cpu.reg.$reg);
+                cpu.set_flag(FlagBit::Z, cmp == 0);
+            },
         }
     };
 }
@@ -213,6 +229,21 @@ macro_rules! load_16bit {
             handler: |cpu| {
                 let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
                 cpu.reg.$reg = d16;
+            },
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! load_16_into_8 {
+    ($mnemonic:ident, $opcode:expr, $reg1:expr, $reg2:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 2,
+            length: 1,
+            handler: |cpu| {
+                cpu.reg.$reg2 = cpu.reg.read_pair_sep($reg1).1;
             },
         }
     };

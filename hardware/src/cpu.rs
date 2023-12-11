@@ -149,16 +149,18 @@ impl CPU {
     }
 
     pub fn print_reg(&self) {
-        trace!("Registers (hex):");
-        trace!("A: {:#04x}     F: {:#04x}", self.reg.a, self.reg.f);
-        trace!("B: {:#04x}     C: {:#04x}", self.reg.b, self.reg.c);
-        trace!("D: {:#04x}     E: {:#04x}", self.reg.d, self.reg.e);
-        trace!("H: {:#04x}     L: {:#04x}", self.reg.h, self.reg.l);
+        if crate::LOG_REGISTERS {
+            trace!("Registers (hex):");
+            trace!("A: {:#04x}     F: {:#04x}", self.reg.a, self.reg.f);
+            trace!("B: {:#04x}     C: {:#04x}", self.reg.b, self.reg.c);
+            trace!("D: {:#04x}     E: {:#04x}", self.reg.d, self.reg.e);
+            trace!("H: {:#04x}     L: {:#04x}", self.reg.h, self.reg.l);
 
-        trace!("Registers (bin):");
-        trace!("A: {:08b} F: {:08b}", self.reg.a, self.reg.f);
-        trace!("B: {:08b} C: {:08b}", self.reg.b, self.reg.c);
-        trace!("D: {:08b} E: {:08b}", self.reg.d, self.reg.e);
-        trace!("H: {:08b} L: {:08b}", self.reg.h, self.reg.l);
+            trace!("Registers (bin):");
+            trace!("A: {:08b} F: {:08b}", self.reg.a, self.reg.f);
+            trace!("B: {:08b} C: {:08b}", self.reg.b, self.reg.c);
+            trace!("D: {:08b} E: {:08b}", self.reg.d, self.reg.e);
+            trace!("H: {:08b} L: {:08b}", self.reg.h, self.reg.l);
+        }
     }
 }

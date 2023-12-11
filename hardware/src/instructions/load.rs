@@ -1,4 +1,6 @@
-use crate::{ld_a8_a, load_16bit, load_8bit, load_a_8bit, load_imm, load_r_into_r, reg::Pair};
+use crate::{
+    ld_a8_a, load_16_into_8, load_16bit, load_8bit, load_a_8bit, load_imm, load_r_into_r, reg::Pair,
+};
 
 use super::Instruction;
 
@@ -29,7 +31,11 @@ pub fn get() -> Vec<Instruction> {
         load_a_8bit!(LD_A_L, 0x7D, l),
         load_8bit!(LD_H_A, 0x67, a, h),
         load_8bit!(LD_D_A, 0x57, a, d),
+        load_8bit!(LD_H_E, 0x63, e, h),
+        load_8bit!(LD_B_C, 0x41, c, b),
+        load_8bit!(LD_B_D, 0x42, d, b),
         load_16bit!(LD_SP_D16, 0x31, sp),
+        load_16_into_8!(LD_L_HL, 0x6E, Pair::HL, l),
         Instruction {
             mnemonic: "LD (a16), A",
             opcode: 0xEA,
@@ -167,5 +173,15 @@ mod tests {
         cpu.mmu.write_word(0x0101, 0x1234);
         instruction.run(&mut cpu);
         assert_eq!(cpu.reg.sp, 0x1234);
+    }
+
+    #[test]
+    fn test_load_16_into_8() {
+        let mut cpu = CPU::new();
+        cpu.reg.h = 0x12;
+        cpu.reg.l = 0x34;
+        let instruction = load_16_into_8!(LD_L_HL, 0x6E, Pair::HL, l);
+        instruction.run(&mut cpu);
+        assert_eq!(cpu.reg.l, 0x34);
     }
 }

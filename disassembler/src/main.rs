@@ -17,7 +17,7 @@ fn main() {
             continue;
         }
 
-        if byte.eq(&0xCB) {
+        if *byte == 0xCB {
             info!("CB prefix");
             info!("{:#04x} {:#04x}", byte, &bytes[i + 1]);
             info!("--------");
@@ -27,31 +27,35 @@ fn main() {
 
         let instruction = INSTRUCTIONS.iter().find(|i| i.opcode == *byte as u32);
 
-        let length = match instruction {
-            Some(i) => {
-                info!("{}", i.mnemonic);
-                i.length as usize
+        match instruction {
+            Some(ins) => {
+                info!("{}", ins.mnemonic);
+                let length = ins.length as usize;
+
+                if length == 1 {
+                    info!("{:#04x}", byte);
+                } else {
+                    skip_count = length - 1;
+
+                    let ins_bytes = &bytes[i..i + length];
+                    let out = ins_bytes
+                        .iter()
+                        .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
+
+                    info!("{}", out);
+                }
+
+                info!("--------");
             }
 
             None => {
                 error!("{} {:#04x}: Unknown", i, byte);
                 break;
             }
-        };
-
-        if length > 1 {
-            skip_count = length - 1;
-
-            let ins_bytes = &bytes[i..i + length];
-            let out = ins_bytes
-                .iter()
-                .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
-            info!("{}", out);
-        } else {
-            info!("{:#04x}", byte);
         }
-        info!("--------");
     }
+
+    info!("Done");
 }
 
 fn setup_logs() {
@@ -64,7 +68,7 @@ fn setup_logs() {
 }
 
 fn save_bytes(bytes: &[u8]) -> std::io::Result<()> {
-    let mut f = std::fs::File::create("./disassembler/DMG_ROM.txt").unwrap();
+    let mut f = std::fs::File::create("./disassembler/DMG_ROM.txt")?;
     let mut counter = 0;
 
     let output = bytes

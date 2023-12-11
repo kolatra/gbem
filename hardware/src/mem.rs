@@ -82,8 +82,7 @@ impl MMU {
             0xFF0F => self.interrupts.flag,
             0xFF10..=0xFF26 => 1, // Sound control registers
             0xFF00..=0xFF7F => 1, // I/O registers
-            //
-            0xFF80..=0xFFFE => self.stack[address - Self::STACK_START],
+            0xFF80..=0xFFFE => self.stack[address - Self::STACK_START], // HRAM
             0xFFFF => self.interrupts.enable,
             _ => 0,
         }
