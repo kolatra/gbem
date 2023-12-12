@@ -1,0 +1,101 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'disassembler'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=disassembler",
+                    "--package=disassembler"
+                ],
+                "filter": {
+                    "name": "disassembler",
+                    "kind": "bin"
+                }
+            },
+            "args": ["-f", "./test-roms/blargg/mem_timing/mem_timing.gb"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'disassembler'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=disassembler",
+                    "--package=disassembler"
+                ],
+                "filter": {
+                    "name": "disassembler",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'hardware'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=hardware"
+                ],
+                "filter": {
+                    "name": "hardware",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'front'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=front",
+                    "--package=front"
+                ],
+                "filter": {
+                    "name": "front",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'front'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=front",
+                    "--package=front"
+                ],
+                "filter": {
+                    "name": "front",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

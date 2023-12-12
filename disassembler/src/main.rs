@@ -1,19 +1,70 @@
-use std::io::Write;
+use std::{io::{Write, Read}, collections::HashMap};
 
+use clap::Parser;
 use hardware::instructions::INSTRUCTIONS;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 fn main() {
     setup_logs();
-    let bytes = include_bytes!("../DMG_ROM.bin").to_vec();
+    let args = Args::parse();
+    let bytes = match args.file {
+        Some(file) => read_from_file(file).expect("Failed to read file"),
+        None => {
+            warn!("No file specified, using default");
+            hardware::BOOT_ROM.to_vec()
+        }
+    };
     info!("Saving bytes to file");
     save_bytes(&bytes).expect("not sure how we got here");
 
-    // 0x31 0xff 0xfe LD SP, d16
+    disassemble(bytes);
+}
+
+#[derive(Debug, Parser)]
+struct Args {
+    #[clap(short, long)]
+    file: Option<String>,
+}
+
+fn setup_logs() {
+    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        // .with_line_number(true)
+        .without_time()
+        .with_max_level(tracing::Level::TRACE)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+}
+
+fn read_from_file(file: String) -> std::io::Result<Vec<u8>> {
+    let mut f = std::fs::File::open(file)?;
+    let mut buffer = Vec::new();
+    f.read_to_end(&mut buffer)?;
+    Ok(buffer)
+}
+
+fn disassemble(bytes: Vec<u8>) {
     let mut skip_count = 0;
+    let mut nop_count = 0;
+    let mut unknown_map = HashMap::new();
+    let mut in_nop = false;
     for (i, byte) in bytes.iter().enumerate() {
         if skip_count > 0 {
             skip_count -= 1;
+            continue;
+        }
+
+        if *byte == 0x00 {
+            if in_nop {
+                nop_count += 1;
+            } else {
+                in_nop = true;
+                nop_count = 1;
+            }
+            continue;
+        } else if in_nop {
+            info!("NOP x{}", nop_count);
+            info!("--------");
+            in_nop = false;
             continue;
         }
 
@@ -49,22 +100,25 @@ fn main() {
             }
 
             None => {
-                error!("{} {:#04x}: Unknown", i, byte);
-                break;
+                error!("{:#04x}: Unknown", byte);
+                let entry = unknown_map.entry(byte).or_insert(0);
+                *entry += 1;
             }
         }
     }
 
-    info!("Done");
-}
-
-fn setup_logs() {
-    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
-        // .with_line_number(true)
-        .without_time()
-        .with_max_level(tracing::Level::TRACE)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    warn!("Unknown bytes");
+    let mut counter = 0;
+    let mut out = String::new();
+    for (byte, count) in unknown_map {
+        counter += 1;
+        out += &format!("{:#04x}: {: <4} ", byte, count);
+        if counter == 15 {
+            counter = 0;
+            warn!("{}", out);
+            out.clear();
+        }
+    }
 }
 
 fn save_bytes(bytes: &[u8]) -> std::io::Result<()> {

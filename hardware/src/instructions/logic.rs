@@ -1,5 +1,7 @@
 use crate::{
-    add, addc, and_reg, cp_r, dec_pair, dec_reg, inc_pair, inc_reg, reg::{FlagBit, Pair}, sub, subc, xor_reg,
+    add, addc, and_reg, cp_r, dec_pair, dec_reg, inc_pair, inc_reg,
+    reg::{FlagBit, Pair},
+    sub, subc, xor_reg,
 };
 
 use super::Instruction;
