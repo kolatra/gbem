@@ -77,9 +77,9 @@ impl MMU {
     pub fn write(&mut self, address: u16, value: u8) {
         debug!("write: {:#04x} {:#04x}", address, value);
         if let Some(lock) = self.get_region(address) {
-            let mut device = lock.write().unwrap();
-            let address = address - device.start;
-            device.write(address, value);
+            let mut region = lock.write().unwrap();
+            let address = address - region.start;
+            region.write(address, value);
         }
     }
 
