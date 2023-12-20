@@ -1,4 +1,5 @@
 #![allow(unused)]
+use hardware::mem::load_rom;
 use std::process::exit;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
@@ -17,6 +18,10 @@ fn main() {
     // https://github.com/Hacktix/Bootix/blob/main/bootix_dmg.asm
     // Can look here for the "steps"
     load_boot_rom(&mut cpu.mmu);
+    if let Err(e) = load_rom(&mut cpu.mmu) {
+        error!("Failed to load ROM: {}", e);
+        exit(1);
+    }
 
     // box that bitch up for sharing
     let p_cpu = Arc::new(RwLock::new(cpu));

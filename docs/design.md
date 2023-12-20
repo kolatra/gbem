@@ -7,7 +7,24 @@ emulate a gameboy system.
 start with the cpu and memory.
 
 ## cpu - Sharp LR35902
-A custom microprocessor, which is a hybrid between the Intel 8080 and the Zilog Z80. 
+A custom 8-bit microprocessor, which is a hybrid between the Intel 8080 and the Zilog Z80.
+
+Many instructions were modified/removed for this system, with some newly added ones as well.
+
+The Gameboy's CPU has 6 registers of 16-bit addressable data. Some are specialized while others are used for general 16 bit operations.
+- AF ~ The accumulator and Flags registers
+- BC
+- DE
+- HL
+- SP ~ The stack pointer
+- PC ~ The program counter
+
+Flags:
+- bits 0-3 are unused
+- 4 ~ Carry flag (C): Set if a carry occured from the last calculation, or if A is the smaller value when doing a compare
+- 5 ~ Half-carry flag (H): Set if a carry occured from the lower nibble (4 bits) in the last math instruction
+- 6 ~ Subtract flag (N): Set if a subtraction was performed in the last math instruction
+- 7 ~ Zero flag (Z): Set if the result of a math operation is zero, or two values match when using `CP`
 
 The clock frequency of this CPU is 4.194304 MHz
 Machine cycles take 4 cpu cycles

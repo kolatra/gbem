@@ -1,6 +1,6 @@
 use crate::{
     instructions::{Instruction, INSTRUCTIONS},
-    mem::MMU,
+    mem::{Memory, MMU},
     reg::FlagBit,
     reg::Registers,
     GPU,
@@ -62,8 +62,9 @@ impl CPU {
     }
 
     fn dbg_print_bytes(&self, i: &Instruction) {
-        let pc = self.reg.pc as usize;
-        let ins_bytes = &self.mmu.cartridge[pc..pc + i.length as usize];
+        let pc = self.reg.pc;
+        let cartridge = &self.mmu.cartridge.read().unwrap();
+        let ins_bytes = cartridge.read_range(pc, pc + i.length);
         let out = ins_bytes
             .iter()
             .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));

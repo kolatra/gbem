@@ -73,16 +73,6 @@ impl Registers {
     }
 }
 
-impl Memory for Registers {
-    fn read(&self, _: u16) -> u8 {
-        todo!()
-    }
-
-    fn write(&mut self, _: u16, _value: u8) {
-        todo!()
-    }
-}
-
 impl Registers {
     pub fn new() -> Self {
         Self {

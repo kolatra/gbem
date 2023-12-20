@@ -1,4 +1,7 @@
-use std::{io::{Write, Read}, collections::HashMap};
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+};
 
 use clap::Parser;
 use hardware::instructions::INSTRUCTIONS;
@@ -7,6 +10,7 @@ use tracing::{error, info, warn};
 fn main() {
     setup_logs();
     let args = Args::parse();
+
     let bytes = match args.file {
         Some(file) => read_from_file(file).expect("Failed to read file"),
         None => {
@@ -14,6 +18,7 @@ fn main() {
             hardware::BOOT_ROM.to_vec()
         }
     };
+
     info!("Saving bytes to file");
     save_bytes(&bytes).expect("not sure how we got here");
 
@@ -65,7 +70,6 @@ fn disassemble(bytes: Vec<u8>) {
             info!("NOP x{}", nop_count);
             info!("--------");
             in_nop = false;
-            continue;
         }
 
         if *byte == 0xCB {
@@ -107,16 +111,23 @@ fn disassemble(bytes: Vec<u8>) {
         }
     }
 
-    warn!("Unknown bytes");
+    warn!("Unknown bytes: {}", unknown_map.len());
     let mut counter = 0;
     let mut out = String::new();
-    for (byte, count) in unknown_map {
+    for (i, (byte, count)) in unknown_map.iter().enumerate() {
         counter += 1;
-        out += &format!("{:#04x}: {: <4} ", byte, count);
-        if counter == 15 {
+        out += &format!("{:#04x}: {: <3} ", byte, count);
+
+        if counter == 4 {
             counter = 0;
             warn!("{}", out);
             out.clear();
+            continue;
+        }
+
+        // print extras
+        if i == unknown_map.len() - 1 {
+            warn!("{}", out);
         }
     }
 }
@@ -137,7 +148,7 @@ fn save_bytes(bytes: &[u8]) -> std::io::Result<()> {
                     " "
                 }
         })
-        .fold(String::new(), |new_s, byte| new_s + &byte);
+        .fold(String::new(), |new_s, b| new_s + &b);
 
     f.write_all(output.as_bytes())
 }
