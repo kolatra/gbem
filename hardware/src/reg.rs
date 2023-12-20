@@ -1,4 +1,3 @@
-use crate::mem::Memory;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FlagBit {
     Z = 7,

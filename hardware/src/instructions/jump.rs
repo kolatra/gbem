@@ -3,11 +3,25 @@ use super::Instruction;
 pub fn get() -> Vec<Instruction> {
     vec![
         Instruction {
+            mnemonic: "JP a16",
+            opcode: 0xC3,
+            cycles: 4,
+            length: 3,
+            handler: |cpu| {
+                let low = cpu.reg.pc;
+                let high = cpu.reg.pc + 1;
+                cpu.reg.pc = (high << 8) | low;
+            },
+        },
+        Instruction {
             mnemonic: "JR s8",
             opcode: 0x18,
             cycles: 3,
             length: 2,
-            handler: |_cpu| todo!(),
+            handler: |cpu| {
+                let offset = cpu.read_next_byte();
+                cpu.reg.pc += offset as u16;
+            },
         },
         Instruction {
             mnemonic: "JR NZ, s8",

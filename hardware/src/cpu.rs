@@ -61,6 +61,16 @@ impl CPU {
         }
     }
 
+    pub fn read_byte(&self) -> u8 {
+        trace!("get_byte");
+        self.mmu.read(self.reg.pc)
+    }
+
+    pub fn read_next_byte(&self) -> u8 {
+        trace!("get_next_byte");
+        self.mmu.read(self.reg.pc + 1)
+    }
+
     fn dbg_print_bytes(&self, i: &Instruction) {
         let pc = self.reg.pc;
         let cartridge = &self.mmu.cartridge.read().unwrap();

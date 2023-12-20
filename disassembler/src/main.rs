@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{
     collections::HashMap,
     io::{Read, Write},
@@ -19,8 +20,10 @@ fn main() {
         }
     };
 
-    info!("Saving bytes to file");
-    save_bytes(&bytes).expect("not sure how we got here");
+    if args.save {
+        info!("Saving bytes to file");
+        save_bytes(&bytes).expect("not sure how we got here");
+    }
 
     disassemble(bytes);
 }
@@ -29,6 +32,9 @@ fn main() {
 struct Args {
     #[clap(short, long)]
     file: Option<String>,
+
+    #[clap(short, long, default_value = "false")]
+    save: bool,
 }
 
 fn setup_logs() {
@@ -84,7 +90,7 @@ fn disassemble(bytes: Vec<u8>) {
 
         match instruction {
             Some(ins) => {
-                info!("{}", ins.mnemonic);
+                info!("{:#04x}: {}", i, ins.mnemonic);
                 let length = ins.length as usize;
 
                 if length == 1 {
@@ -104,7 +110,7 @@ fn disassemble(bytes: Vec<u8>) {
             }
 
             None => {
-                error!("{:#04x}: Unknown", byte);
+                error!("{:#04x}: {:#04x} Unknown", i, byte);
                 let entry = unknown_map.entry(byte).or_insert(0);
                 *entry += 1;
             }

@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![allow(dead_code)]
 use hardware::mem::load_rom;
 use std::process::exit;
 use std::sync::mpsc;
@@ -7,9 +7,9 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
-use tracing::{debug, error, info, trace};
+use tracing::{error, trace};
 
-use hardware::{cpu::CPU, mem::load_boot_rom, GPU, LOG_LINES, SPAMMY_LOGS};
+use hardware::{cpu::CPU, mem::load_boot_rom, LOG_LINES, SPAMMY_LOGS};
 
 fn main() {
     setup_logs();
@@ -29,7 +29,7 @@ fn main() {
 
     loop {
         match r_cpu.recv() {
-            Ok(cpu_state) => {
+            Ok(_cpu_state) => {
                 // update everything else
                 // with new memory and cpu state
                 trace!("received new cpu state")
