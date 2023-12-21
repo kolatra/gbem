@@ -3,7 +3,7 @@ set dotenv-load
 alias r := run
 
 da:
-    cargo r --release -p disassembler -- -f ./test-roms/blargg/mem_timing/mem_timing.gb -s
+    cargo r --release -p disassembler -- -f ./roms/snake.gb
 
 run:
     cargo r --release -p front

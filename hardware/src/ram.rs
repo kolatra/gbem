@@ -1,4 +1,7 @@
-use std::{ops::Deref, sync::{Arc, RwLock}};
+use std::{
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 pub enum RamSize {
     KB2,
     KB8,
@@ -77,7 +80,7 @@ impl Memory for MemoryRegion {
 impl MemoryRegion {
     pub fn new(size: usize, start: u16) -> Arc<RwLock<Self>> {
         let region = Self {
-            start, 
+            start,
             mem: vec![0; size],
         };
 

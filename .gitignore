@@ -2,4 +2,5 @@ front/target
 hardware/target
 target/
 test-roms/
+roms/
 disassembler/DMG_ROM.txt

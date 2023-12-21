@@ -1,14 +1,15 @@
 #![allow(dead_code)]
+#![feature(let_chains)]
 use std::{
     collections::HashMap,
-    io::{Read, Write},
+    io::{Read, Write}, thread, time::Duration,
 };
 
 use clap::Parser;
 use hardware::instructions::INSTRUCTIONS;
 use tracing::{error, info, warn};
 
-fn main() {
+fn main() -> Result<(), &'static str> {
     setup_logs();
     let args = Args::parse();
 
@@ -25,7 +26,11 @@ fn main() {
         save_bytes(&bytes).expect("not sure how we got here");
     }
 
+    let header = parse_header(bytes.clone())?;
+    info!("{:#?}", header);
     disassemble(bytes);
+
+    Ok(())
 }
 
 #[derive(Debug, Parser)]
@@ -37,9 +42,61 @@ struct Args {
     save: bool,
 }
 
+#[derive(Debug)]
+struct DMGHeader {
+    entry_point: Vec<u8>,
+    logo: Vec<u8>,
+    title: Vec<u8>,
+    licensee: Vec<u8>,
+    sgb_flag: u8,
+    cartridge_type: u8,
+    rom_size: u8,
+    ram_size: u8,
+    destination_code: u8,
+    old_licensee_code: u8,
+    mask_rom_version_number: u8,
+    header_checksum: u8,
+    global_checksum: u16,
+}
+
+fn parse_header(bytes: Vec<u8>) -> Result<DMGHeader, &'static str> {
+    let entry_point = bytes[0x0100..0x0104].to_vec();
+    let logo = bytes[0x0104..0x0134].to_vec();
+    let title = bytes[0x0134..0x0143].to_vec();
+    let licensee = bytes[0x0144..0x0146].to_vec();
+    let sgb_flag = bytes[0x0146];
+    let cartridge_type = bytes[0x0147];
+    let rom_size = bytes[0x0148];
+    let ram_size = bytes[0x0149];
+    let destination_code = bytes[0x014A];
+    let old_licensee_code = bytes[0x014B];
+    let mask_rom_version_number = bytes[0x014C];
+    let header_checksum = bytes[0x014D];
+
+    let global_checksum = bytes[0x014E..0x0150]
+        .iter()
+        .fold(0, |acc, n| acc + *n as u16);
+
+    Ok(DMGHeader {
+        entry_point,
+        logo,
+        title,
+        licensee,
+        sgb_flag,
+        cartridge_type,
+        rom_size,
+        ram_size,
+        destination_code,
+        old_licensee_code,
+        mask_rom_version_number,
+        header_checksum,
+        global_checksum,
+    })
+}
+
 fn setup_logs() {
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
-        // .with_line_number(true)
+        .with_line_number(true)
         .without_time()
         .with_max_level(tracing::Level::TRACE)
         .finish();
@@ -73,8 +130,7 @@ fn disassemble(bytes: Vec<u8>) {
             }
             continue;
         } else if in_nop {
-            info!("NOP x{}", nop_count);
-            info!("--------");
+            info!("{:#04x} NOP x{}", i, nop_count);
             in_nop = false;
         }
 
@@ -88,25 +144,29 @@ fn disassemble(bytes: Vec<u8>) {
 
         let instruction = INSTRUCTIONS.iter().find(|i| i.opcode == *byte as u32);
 
+        // Ignore RST 7 for now, it's filler
+        if let Some(instruction) = instruction && instruction.opcode == 0xFF {
+            continue;
+        }
+
         match instruction {
             Some(ins) => {
-                info!("{:#04x}: {}", i, ins.mnemonic);
                 let length = ins.length as usize;
+                
+                let mut operands = String::new();
 
-                if length == 1 {
-                    info!("{:#04x}", byte);
-                } else {
+                if length > 1 {
                     skip_count = length - 1;
 
                     let ins_bytes = &bytes[i..i + length];
                     let out = ins_bytes
-                        .iter()
-                        .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
-
-                    info!("{}", out);
+                    .iter()
+                    .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
+                
+                    operands = out;
                 }
-
-                info!("--------");
+            
+                info!("{:#04x}: {} {:#02x} {}", i, ins.mnemonic, ins.opcode, operands);
             }
 
             None => {

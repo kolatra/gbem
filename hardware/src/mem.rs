@@ -4,8 +4,8 @@ use std::{fs, sync::Arc};
 
 use tracing::{debug, error, info, trace};
 
-use crate::ram::{Region, MemoryRegion};
-use crate::{Interrupts, Timer, BOOT_ROM, NINTENDO_HEADER, ram::RamSize::*, ram::RamStart::*};
+use crate::ram::{MemoryRegion, Region};
+use crate::{ram::RamSize::*, ram::RamStart::*, Interrupts, Timer, BOOT_ROM, NINTENDO_HEADER};
 
 pub trait Memory {
     fn read(&self, address: u16) -> u8;
@@ -27,8 +27,6 @@ pub trait Memory {
         self.write(address + 1, upper);
     }
 }
-
-
 
 #[derive(Debug, Clone, Default)]
 pub struct MMU {
