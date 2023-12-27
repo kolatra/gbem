@@ -31,7 +31,7 @@ pub struct Instruction {
 
 impl Instruction {
     pub fn run(&self, cpu: &mut CPU) {
-        (self.handler)(cpu)
+        (self.handler)(cpu);
     }
 }
 

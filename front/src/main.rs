@@ -1,5 +1,8 @@
 #![allow(dead_code)]
+#![warn(clippy::nursery, clippy::pedantic)]
+use clap::Parser;
 use hardware::mem::load_rom;
+use tracing::warn;
 use std::process::exit;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
@@ -11,14 +14,28 @@ use tracing::{error, trace};
 
 use hardware::{cpu::CPU, mem::load_boot_rom, LOG_LINES, SPAMMY_LOGS};
 
+static DEFAULT_ROM: &str = "/home/tyler/dev/gbem/roms/Tetris.gb";
+
+#[derive(Debug, Parser)]
+struct Args {
+    #[clap(short, long)]
+    rom: Option<String>,
+}
+
 fn main() {
     setup_logs();
+    let args = Args::parse();
+    let rom = args.rom.unwrap_or_else(|| {
+        warn!("Using default rom: {}", DEFAULT_ROM);
+        DEFAULT_ROM.to_string()
+    });
+    trace!("Starting up with rom: {}", rom);
 
-    let mut cpu = CPU::new();
+    let cpu = CPU::new();
     // https://github.com/Hacktix/Bootix/blob/main/bootix_dmg.asm
     // Can look here for the "steps"
-    load_boot_rom(&mut cpu.mmu);
-    if let Err(e) = load_rom(&mut cpu.mmu) {
+    load_boot_rom(&cpu.mmu);
+    if let Err(e) = load_rom(&rom, &cpu.mmu) {
         error!("Failed to load ROM: {}", e);
         exit(1);
     }
@@ -32,7 +49,7 @@ fn main() {
             Ok(_cpu_state) => {
                 // update everything else
                 // with new memory and cpu state
-                trace!("received new cpu state")
+                trace!("received new cpu state");
             }
 
             Err(e) => {
@@ -45,12 +62,14 @@ fn main() {
 }
 
 fn setup_logs() {
-    let level = match SPAMMY_LOGS {
-        true => tracing::Level::TRACE,
-        false => tracing::Level::DEBUG,
+    let level = if SPAMMY_LOGS {
+        tracing::Level::TRACE
+    } else {
+        tracing::Level::DEBUG
     };
 
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .without_time()
         .with_line_number(LOG_LINES)
         .with_file(LOG_LINES)
         .with_max_level(level)

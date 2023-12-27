@@ -28,8 +28,9 @@ pub enum Pair {
     HL,
 }
 
+#[allow(clippy::needless_pass_by_value)]
 impl Registers {
-    pub fn read_pair(&self, pair: Pair) -> u16 {
+    pub const fn read_pair(&self, pair: Pair) -> u16 {
         match pair {
             Pair::AF => (self.a as u16) << 8 | self.f as u16,
             Pair::BC => (self.b as u16) << 8 | self.c as u16,
@@ -38,7 +39,7 @@ impl Registers {
         }
     }
 
-    pub fn read_pair_sep(&self, pair: Pair) -> (u8, u8) {
+    pub const fn read_pair_sep(&self, pair: Pair) -> (u8, u8) {
         match pair {
             Pair::AF => (self.a, self.f),
             Pair::BC => (self.b, self.c),
@@ -47,6 +48,7 @@ impl Registers {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub fn write_pair(&mut self, pair: Pair, value: u16) {
         let higher = (value >> 8) as u8;
         let lower = value as u8;
@@ -73,7 +75,7 @@ impl Registers {
 }
 
 impl Registers {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             a: 0x01,
             // FIXME:

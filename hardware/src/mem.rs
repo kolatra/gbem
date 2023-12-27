@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use std::sync::RwLock;
 use std::{fs, sync::Arc};
+use std::io::ErrorKind::InvalidData;
 
 use tracing::{debug, error, info, trace};
 
@@ -17,9 +18,10 @@ pub trait Memory {
         let upper = self.read(address);
         let lower = self.read(address + 1);
 
-        (lower as u16) << 8 | upper as u16
+        u16::from(lower) << 8 | u16::from(upper)
     }
 
+    #[allow(clippy::cast_possible_truncation)] // The value is always the lower 8 bits
     fn write_word(&mut self, address: u16, value: u16) {
         let upper = (value >> 8) as u8;
         let lower = value as u8;
@@ -62,21 +64,16 @@ impl MMU {
 impl MMU {
     pub fn read(&self, address: u16) -> u8 {
         debug!("read: {:#04x}", address);
-        match self.get_region(address) {
-            Some(lock) => {
-                let region = lock.read().unwrap();
-                let address = address - region.start;
-                region.read(address)
-            }
-            None => 0,
-        }
+        self.get_region(address).map_or(0, |lock| {
+            let region = lock.read().unwrap();
+            region.read(address)
+        })
     }
 
     pub fn write(&mut self, address: u16, value: u8) {
         debug!("write: {:#04x} {:#04x}", address, value);
         if let Some(lock) = self.get_region(address) {
             let mut region = lock.write().unwrap();
-            let address = address - region.start;
             region.write(address, value);
         }
     }
@@ -101,8 +98,7 @@ impl MMU {
             0xFF80..=0xFFFE => Some(Arc::clone(&self.hram)),
             0xFFFF => { error!(address, "Interrupt enable is not implemented"); None }
             _ => panic!(
-                "Tried to get device at {:x} (outside of address space)",
-                address
+                "Tried to get device at {address:x} (outside of address space)"
             ),
         }
     }
@@ -114,9 +110,10 @@ impl MMU {
         // In 2-byte instructions, the first byte of immediate
         // data is the lower byte and the second byte is
         // the upper byte.
-        (lower as u16) << 8 | upper as u16
+        u16::from(lower) << 8 | u16::from(upper)
     }
 
+    #[allow(clippy::cast_possible_truncation)] // bits are manually extracted
     pub fn write_word(&mut self, address: u16, value: u16) {
         let upper = (value >> 8) as u8;
         let lower = value as u8;
@@ -125,27 +122,27 @@ impl MMU {
     }
 }
 
-pub fn load_rom(mmu: &mut MMU) -> std::io::Result<()> {
-    // FIXME: The ROM is hardcoded for now, but we can make it more dynamic.
-    // The ROM "check" is also disabled to make the test load.
-    let rom = "./disassembler/DMG_ROM.bin";
+#[allow(clippy::cast_possible_truncation)]
+pub fn load_rom(rom: &str, mmu: &MMU) -> std::io::Result<()> {
     // let rom = "./test-roms/blargg/mem_timing/mem_timing.gb";
     let bytes = fs::read(rom)?;
 
-    if bytes.len() < 0x0133 || bytes[0x0104..0x0133] != NINTENDO_HEADER {
+    if bytes.len() < 0x0133 || bytes[0x0104..=0x0133] != NINTENDO_HEADER {
         error!("Invalid ROM");
-        // return Err(std::io::Error::new(InvalidData, "Invalid ROM"));
+        return Err(std::io::Error::new(InvalidData, "Invalid ROM"));
     }
 
-    info!("Loading ROM");
+    info!("Loading ROM {rom}");
     let arc = mmu.cartridge.clone();
-    let mut cart = arc.write().unwrap();
-    cart.write_range(0, bytes.len() as u16, &bytes);
+    arc.write()
+        .unwrap()
+        .write_range(0, bytes.len() as u16, &bytes);
 
     Ok(())
 }
 
-pub fn load_boot_rom(mmu: &mut MMU) {
+#[allow(clippy::cast_possible_truncation)]
+pub fn load_boot_rom(mmu: &MMU) {
     trace!("Loading boot ROM");
     let arc = mmu.cartridge.clone();
     let mut cart = arc.write().unwrap();

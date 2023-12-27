@@ -22,6 +22,7 @@ pub fn get() -> Vec<Instruction> {
         load_imm!(LD_L_D8, 0x2E, l),
         load_r_into_r!(LD_B_A, 0x47, b, a),
         load_r_into_r!(LD_C_A, 0x4F, c, a),
+        load_r_into_r!(LD_B_B, 0x50, b, b),
         load_a_8bit!(LD_A_A, 0x7F, a),
         load_a_8bit!(LD_A_B, 0x78, b),
         load_a_8bit!(LD_A_C, 0x79, c),

@@ -51,33 +51,37 @@ impl CPU {
             opcode = self.mmu.read(pc + 1);
         }
 
-        match INSTRUCTIONS.iter().find(|i| i.opcode == opcode.into()) {
-            Some(i) => {
-                self.dbg_print_bytes(i);
-                debug!("opcode: {:#04x}", opcode);
-                *i
-            }
-            None => panic!("Unknown opcode: {:#04x}", opcode),
-        }
+        INSTRUCTIONS
+            .iter()
+            .find(|i| i.opcode == opcode.into())
+            .map_or_else(
+                || panic!("Unknown opcode: {opcode:#04x}"),
+                |i| {
+                    self.dbg_print_bytes(i);
+                    debug!("opcode: {:#04x}", opcode);
+                    *i
+                },
+            )
     }
 
     pub fn read_byte(&self) -> u8 {
-        trace!("get_byte");
+        trace!("read_byte");
         self.mmu.read(self.reg.pc)
     }
 
     pub fn read_next_byte(&self) -> u8 {
-        trace!("get_next_byte");
+        trace!("read_next_byte");
         self.mmu.read(self.reg.pc + 1)
     }
 
+    #[allow(clippy::significant_drop_tightening)] // It doesn't actually apply here
     fn dbg_print_bytes(&self, i: &Instruction) {
         let pc = self.reg.pc;
         let cartridge = &self.mmu.cartridge.read().unwrap();
         let ins_bytes = cartridge.read_range(pc, pc + i.length);
         let out = ins_bytes
             .iter()
-            .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
+            .fold(String::new(), |s, b| s + &format!("{b:#02x} "));
         debug!(out);
     }
 
@@ -97,7 +101,7 @@ impl CPU {
             self.reg.pc += instruction.length;
         }
 
-        self.print_reg()
+        self.print_reg();
     }
 
     pub fn reset(&mut self) {
@@ -109,7 +113,7 @@ impl CPU {
         trace!("set_flag");
         let bit = flag as u8;
         let mask = 1 << bit;
-        self.reg.f = (self.reg.f & !mask) | ((value as u8) << bit);
+        self.reg.f = (self.reg.f & !mask) | (u8::from(value) << bit);
     }
 
     pub fn is_set(&self, flag: FlagBit) -> bool {
@@ -122,16 +126,16 @@ impl CPU {
     /// https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
     #[rustfmt::skip]
     pub fn add(&mut self, b: u8, use_carry: bool) {
+        use FlagBit::*;
         trace!("add");
         let a   = self.reg.a;
-        let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
+        let c   = u8::from(use_carry && self.is_set(C));
         let hc  = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
         let r   = a.wrapping_add(b).wrapping_add(c);
-        let a16 = a as u16;
-        let b16 = b as u16;
-        let c16 = c as u16;
+        let a16 = u16::from(a);
+        let b16 = u16::from(b);
+        let c16 = u16::from(c);
 
-        use FlagBit::*;
         self.set_flag(Z, r == 0);
         self.set_flag(N, false);
         self.set_flag(H, hc);
@@ -141,16 +145,16 @@ impl CPU {
 
     #[rustfmt::skip]
     pub fn sub(&mut self, b: u8, use_carry: bool) {
+        use FlagBit::*;
         trace!("sub");
         let a   = self.reg.a;
-        let c   = if use_carry && self.is_set(C) { 1 } else { 0 };
+        let c   = u8::from(use_carry && self.is_set(C));
         let hc  = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
         let r   = a.wrapping_sub(b).wrapping_sub(c);
-        let a16 = a as u16;
-        let b16 = b as u16;
-        let c16 = c as u16;
+        let a16 = u16::from(a);
+        let b16 = u16::from(b);
+        let c16 = u16::from(c);
 
-        use FlagBit::*;
         self.set_flag(Z, r == 0);
         self.set_flag(N, true);
         self.set_flag(H, hc);

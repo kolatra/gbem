@@ -1,36 +1,35 @@
-#![allow(dead_code)]
 #![feature(let_chains)]
+#![warn(clippy::pedantic, clippy::nursery)]
+#![allow(dead_code, clippy::similar_names)]
 use std::{
     collections::HashMap,
-    io::{Read, Write}, thread, time::Duration,
+    io::{Read, Write},
 };
 
 use clap::Parser;
 use hardware::instructions::INSTRUCTIONS;
 use tracing::{error, info, warn};
 
-fn main() -> Result<(), &'static str> {
+fn main() {
     setup_logs();
     let args = Args::parse();
 
-    let bytes = match args.file {
-        Some(file) => read_from_file(file).expect("Failed to read file"),
-        None => {
+    let bytes = args.file.map_or_else(
+        || {
             warn!("No file specified, using default");
             hardware::BOOT_ROM.to_vec()
-        }
-    };
+        },
+        |file| read_from_file(file).expect("Failed to read file"),
+    );
 
     if args.save {
         info!("Saving bytes to file");
         save_bytes(&bytes).expect("not sure how we got here");
     }
 
-    let header = parse_header(bytes.clone())?;
+    let header = parse_header(&bytes);
     info!("{:#?}", header);
-    disassemble(bytes);
-
-    Ok(())
+    disassemble(&bytes);
 }
 
 #[derive(Debug, Parser)]
@@ -59,7 +58,7 @@ struct DMGHeader {
     global_checksum: u16,
 }
 
-fn parse_header(bytes: Vec<u8>) -> Result<DMGHeader, &'static str> {
+fn parse_header(bytes: &[u8]) -> DMGHeader {
     let entry_point = bytes[0x0100..0x0104].to_vec();
     let logo = bytes[0x0104..0x0134].to_vec();
     let title = bytes[0x0134..0x0143].to_vec();
@@ -75,9 +74,9 @@ fn parse_header(bytes: Vec<u8>) -> Result<DMGHeader, &'static str> {
 
     let global_checksum = bytes[0x014E..0x0150]
         .iter()
-        .fold(0, |acc, n| acc + *n as u16);
+        .fold(0, |acc, n| acc + u16::from(*n));
 
-    Ok(DMGHeader {
+    DMGHeader {
         entry_point,
         logo,
         title,
@@ -91,7 +90,7 @@ fn parse_header(bytes: Vec<u8>) -> Result<DMGHeader, &'static str> {
         mask_rom_version_number,
         header_checksum,
         global_checksum,
-    })
+    }
 }
 
 fn setup_logs() {
@@ -110,7 +109,7 @@ fn read_from_file(file: String) -> std::io::Result<Vec<u8>> {
     Ok(buffer)
 }
 
-fn disassemble(bytes: Vec<u8>) {
+fn disassemble(bytes: &[u8]) {
     let mut skip_count = 0;
     let mut nop_count = 0;
     let mut unknown_map = HashMap::new();
@@ -142,38 +141,39 @@ fn disassemble(bytes: Vec<u8>) {
             continue;
         }
 
-        let instruction = INSTRUCTIONS.iter().find(|i| i.opcode == *byte as u32);
+        let instruction = INSTRUCTIONS.iter().find(|i| i.opcode == u32::from(*byte));
 
         // Ignore RST 7 for now, it's filler
-        if let Some(instruction) = instruction && instruction.opcode == 0xFF {
+        if let Some(instruction) = instruction
+            && instruction.opcode == 0xFF
+        {
             continue;
         }
 
-        match instruction {
-            Some(ins) => {
-                let length = ins.length as usize;
-                
-                let mut operands = String::new();
+        if let Some(ins) = instruction {
+            let length = ins.length as usize;
 
-                if length > 1 {
-                    skip_count = length - 1;
+            let operands = if length > 1 {
+                skip_count = length - 1;
 
-                    let ins_bytes = &bytes[i..i + length];
-                    let out = ins_bytes
+                let ins_bytes = &bytes[i..i + length];
+                let out = ins_bytes
                     .iter()
-                    .fold(String::new(), |s, b| s + &format!("{:#02x} ", b));
-                
-                    operands = out;
-                }
-            
-                info!("{:#04x}: {} {:#02x} {}", i, ins.mnemonic, ins.opcode, operands);
-            }
+                    .fold(String::new(), |s, byte| s + &format!("{byte:#02x} "));
 
-            None => {
-                error!("{:#04x}: {:#04x} Unknown", i, byte);
-                let entry = unknown_map.entry(byte).or_insert(0);
-                *entry += 1;
-            }
+                out
+            } else {
+                String::new()
+            };
+
+            info!(
+                "{:#04x}: {} {:#02x} {}",
+                i, ins.mnemonic, ins.opcode, operands
+            );
+        } else {
+            error!("{:#04x}: {:#04x} Unknown", i, byte);
+            let entry = unknown_map.entry(byte).or_insert(0);
+            *entry += 1;
         }
     }
 
@@ -182,7 +182,7 @@ fn disassemble(bytes: Vec<u8>) {
     let mut out = String::new();
     for (i, (byte, count)) in unknown_map.iter().enumerate() {
         counter += 1;
-        out += &format!("{:#04x}: {: <3} ", byte, count);
+        out += &format!("{byte:#04x}: {count: <3} ");
 
         if counter == 4 {
             counter = 0;
@@ -206,7 +206,7 @@ fn save_bytes(bytes: &[u8]) -> std::io::Result<()> {
         .iter()
         .map(|b| {
             counter += 1;
-            format!("{:#04x}", b)
+            format!("{b:#04x}")
                 + if counter == 16 {
                     counter = 0;
                     "\n"

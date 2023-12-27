@@ -1,4 +1,15 @@
-#![allow(clippy::match_overlapping_arm, clippy::self_assignment)]
+#![warn(clippy::pedantic, clippy::nursery)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::match_overlapping_arm,
+    clippy::self_assignment,
+    clippy::must_use_candidate,
+    clippy::enum_glob_use,
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::similar_names,
+    clippy::too_many_lines
+)]
 #![feature(lazy_cell)]
 use tracing::warn;
 
@@ -13,8 +24,8 @@ pub const SPAMMY_LOGS: bool = true;
 pub const LOG_REGISTERS: bool = true;
 pub const LOG_LINES: bool = true;
 
-pub const CLOCK_FREQ: usize = 4194304; // 4.194304 MHz
-pub const MACHINE_FREQ: usize = 1048576; // 1.048576 MHz - 1/4 of the clock frequency
+pub const CLOCK_FREQ: usize = 4_194_304; // 4.194304 MHz
+pub const MACHINE_FREQ: usize = 1_048_576; // 1.048576 MHz - 1/4 of the clock frequency
 pub const FPS: usize = 60;
 pub const RAM_SIZE: usize = 0x2000;
 pub const MAX_ROM_SIZE: usize = 0x8000; // Assumed from the region size in memory

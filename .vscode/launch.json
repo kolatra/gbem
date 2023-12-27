@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["-f", "./test-roms/blargg/mem_timing/mem_timing.gb"],
+            "args": ["-f", "./roms/Tetris.gb"],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -75,7 +75,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["-r", "./roms/Tetris.gb"],
             "cwd": "${workspaceFolder}"
         },
         {

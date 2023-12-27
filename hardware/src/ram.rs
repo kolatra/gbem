@@ -2,6 +2,10 @@ use std::{
     ops::Deref,
     sync::{Arc, RwLock},
 };
+
+use crate::mem::Memory;
+
+use RamSize::*;
 pub enum RamSize {
     KB2,
     KB8,
@@ -9,8 +13,6 @@ pub enum RamSize {
     KB64,
     KB128,
 }
-
-use RamSize::*;
 
 impl Deref for RamSize {
     type Target = usize;
@@ -26,6 +28,7 @@ impl Deref for RamSize {
     }
 }
 
+use RamStart::*;
 pub enum RamStart {
     Cart,
     VRam,
@@ -33,9 +36,6 @@ pub enum RamStart {
     ERam,
     HRam,
 }
-use RamStart::*;
-
-use crate::mem::Memory;
 
 impl Deref for RamStart {
     type Target = u16;
@@ -61,10 +61,12 @@ pub struct MemoryRegion {
 
 impl Memory for MemoryRegion {
     fn read(&self, address: u16) -> u8 {
+        let address = address - self.start;
         self.mem[address as usize]
     }
 
     fn write(&mut self, address: u16, value: u8) {
+        let address = address - self.start;
         self.mem[address as usize] = value;
     }
 
