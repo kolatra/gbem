@@ -11,7 +11,7 @@ pub enum RamSize {
 }
 
 impl From<RamSize> for u16 {
-    #[allow(clippy::cast_possible_truncation)]
+    
     fn from(size: RamSize) -> Self {
         size as Self
     }
@@ -26,7 +26,7 @@ pub enum RamStart {
 }
 
 impl From<RamStart> for u16 {
-    #[allow(clippy::cast_possible_truncation)]
+    
     fn from(start: RamStart) -> Self {
         start as Self
     }

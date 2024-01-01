@@ -39,7 +39,7 @@ impl Registers {
         }
     }
 
-    #[allow(clippy::cast_possible_truncation)]
+    
     pub fn write_pair(&mut self, pair: Pair, value: u16) {
         let higher = (value >> 8) as u8;
         let lower = value as u8;
@@ -62,6 +62,10 @@ impl Registers {
                 self.l = lower;
             }
         }
+    }
+
+    pub const fn is_set(&self, flag: FlagBit) -> bool {
+        self.f >> flag as u16 == 1
     }
 }
 

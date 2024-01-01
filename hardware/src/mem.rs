@@ -21,7 +21,6 @@ pub trait Memory {
         u16::from(lower) << 8 | u16::from(upper)
     }
 
-    #[allow(clippy::cast_possible_truncation)] // The value is always the lower 8 bits
     fn write_word(&mut self, address: u16, value: u16) {
         let upper = (value >> 8) as u8;
         let lower = value as u8;
@@ -113,7 +112,6 @@ impl MMU {
         u16::from(lower) << 8 | u16::from(upper)
     }
 
-    #[allow(clippy::cast_possible_truncation)] // bits are manually extracted
     pub fn write_word(&mut self, address: u16, value: u16) {
         let upper = (value >> 8) as u8;
         let lower = value as u8;
@@ -133,7 +131,7 @@ impl MMU {
     }
 }
 
-#[allow(clippy::cast_possible_truncation)]
+
 pub fn load_rom(rom: &str, mmu: &MMU) -> std::io::Result<()> {
     // let rom = "./test-roms/blargg/mem_timing/mem_timing.gb";
     let bytes = fs::read(rom)?;
@@ -152,7 +150,7 @@ pub fn load_rom(rom: &str, mmu: &MMU) -> std::io::Result<()> {
     Ok(())
 }
 
-#[allow(clippy::cast_possible_truncation)]
+
 pub fn load_boot_rom(mmu: &MMU) {
     trace!("Loading boot ROM");
     let arc = mmu.cart.clone();

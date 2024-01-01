@@ -4,7 +4,7 @@ use crate::{
 
 use super::Instruction;
 
-#[allow(clippy::cast_possible_truncation)]
+
 pub fn get() -> Vec<Instruction> {
     vec![
         ld_a8_a!(LDH_A8_A, 0xE0),

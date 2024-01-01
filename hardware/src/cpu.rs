@@ -75,6 +75,11 @@ impl CPU {
         self.mmu.read(self.reg.pc + 1)
     }
 
+    pub fn read_next_word(&self) -> u16 {
+        trace!("read_next_word");
+        self.mmu.read_word(self.reg.pc + 1)
+    }
+
     #[allow(clippy::significant_drop_tightening)] // It doesn't actually apply here
     fn dbg_print_bytes(&self, i: &Instruction) {
         let pc = self.reg.pc;

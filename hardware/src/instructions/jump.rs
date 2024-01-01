@@ -1,3 +1,5 @@
+use crate::reg::FlagBit;
+
 use super::Instruction;
 
 pub fn get() -> Vec<Instruction> {
@@ -49,7 +51,14 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0xCC,
             cycles: 6, // 3 if not taken
             length: 3,
-            handler: |_cpu| todo!(),
+            handler: |cpu| {
+                if cpu.reg.is_set(FlagBit::Z) {
+                    let pc = cpu.reg.pc + 1;
+                    cpu.push_stack((pc >> 8) as u8);
+                    cpu.push_stack(pc as u8);
+                    cpu.reg.pc = cpu.read_next_word();
+                }
+            },
         },
         Instruction {
             mnemonic: "RST 7",
@@ -58,7 +67,6 @@ pub fn get() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 cpu.push_stack((cpu.reg.pc >> 8) as u8);
-                #[allow(clippy::cast_possible_truncation)]
                 cpu.push_stack(cpu.reg.pc as u8);
                 // cpu.reg.pc = 0x38;
                 cpu.reg.pc = 0x0138;

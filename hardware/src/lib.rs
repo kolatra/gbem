@@ -8,7 +8,8 @@
     clippy::missing_panics_doc,
     clippy::missing_errors_doc,
     clippy::similar_names,
-    clippy::too_many_lines
+    clippy::too_many_lines,
+    clippy::cast_possible_truncation
 )]
 #![feature(lazy_cell)]
 use tracing::warn;
