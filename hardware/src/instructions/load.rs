@@ -140,7 +140,7 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x66,
             cycles: 2,
             length: 1,
-            handler: |_cpu| todo!(),
+            handler: |cpu| cpu.reg.h = cpu.reg.read_pair(Pair::HL) as u8,
         },
         Instruction {
             mnemonic: "LD (HL), E",
