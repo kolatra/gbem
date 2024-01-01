@@ -39,15 +39,6 @@ impl Registers {
         }
     }
 
-    pub const fn read_pair_sep(&self, pair: Pair) -> (u8, u8) {
-        match pair {
-            Pair::AF => (self.a, self.f),
-            Pair::BC => (self.b, self.c),
-            Pair::DE => (self.d, self.e),
-            Pair::HL => (self.h, self.l),
-        }
-    }
-
     #[allow(clippy::cast_possible_truncation)]
     pub fn write_pair(&mut self, pair: Pair, value: u16) {
         let higher = (value >> 8) as u8;

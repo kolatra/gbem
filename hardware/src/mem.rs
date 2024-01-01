@@ -1,7 +1,7 @@
 #![allow(dead_code)]
+use std::io::ErrorKind::InvalidData;
 use std::sync::RwLock;
 use std::{fs, sync::Arc};
-use std::io::ErrorKind::InvalidData;
 
 use tracing::{debug, error, info, trace};
 
@@ -32,7 +32,7 @@ pub trait Memory {
 
 #[derive(Debug, Clone, Default)]
 pub struct MMU {
-    pub cartridge: Region,
+    cart: Region,
     vram: Region,
     wram: Region,
     hram: Region,
@@ -48,10 +48,10 @@ pub struct MMU {
 impl MMU {
     pub fn new() -> Self {
         Self {
-            cartridge: MemoryRegion::new(*KB32, *Cart),
-            vram: MemoryRegion::new(*KB8, *VRam),
-            wram: MemoryRegion::new(*KB8, *WRam),
-            hram: MemoryRegion::new(126, *HRam),
+            cart: MemoryRegion::new(u16::from(KB32), u16::from(Cart)),
+            vram: MemoryRegion::new(u16::from(KB8), u16::from(VRam)),
+            wram: MemoryRegion::new(u16::from(KB8), u16::from(WRam)),
+            hram: MemoryRegion::new(126, u16::from(HRam)),
             timer: Timer::default(),
             joypad: 0,
             divider_reg: 0,
@@ -82,7 +82,7 @@ impl MMU {
     #[rustfmt::skip]
     fn get_region(&self, address: u16) -> Option<Arc<RwLock<MemoryRegion>>> {
         match address {
-            0x0000..=0x7FFF => Some(Arc::clone(&self.cartridge)),
+            0x0000..=0x7FFF => Some(Arc::clone(&self.cart)),
             0x8000..=0x9FFF => Some(Arc::clone(&self.vram)),
             0xA000..=0xBFFF => { error!(address, "Cartridge external RAM is not implemented"); None }
             0xC000..=0xDFFF => Some(Arc::clone(&self.wram)),
@@ -120,6 +120,17 @@ impl MMU {
         self.write(address, lower);
         self.write(address + 1, upper);
     }
+
+    pub fn read_range(&self, start: u16, end: u16) -> Option<Vec<u8>> {
+        let region = self.get_region(start);
+
+        region.map(|region| {
+            let region = region.read().unwrap();
+            region
+                .read_range(start - region.start, end - region.start)
+                .to_owned()
+        })
+    }
 }
 
 #[allow(clippy::cast_possible_truncation)]
@@ -133,7 +144,7 @@ pub fn load_rom(rom: &str, mmu: &MMU) -> std::io::Result<()> {
     }
 
     info!("Loading ROM {rom}");
-    let arc = mmu.cartridge.clone();
+    let arc = mmu.cart.clone();
     arc.write()
         .unwrap()
         .write_range(0, bytes.len() as u16, &bytes);
@@ -144,7 +155,7 @@ pub fn load_rom(rom: &str, mmu: &MMU) -> std::io::Result<()> {
 #[allow(clippy::cast_possible_truncation)]
 pub fn load_boot_rom(mmu: &MMU) {
     trace!("Loading boot ROM");
-    let arc = mmu.cartridge.clone();
+    let arc = mmu.cart.clone();
     let mut cart = arc.write().unwrap();
     cart.write_range(0, BOOT_ROM.len() as u16, BOOT_ROM);
 }

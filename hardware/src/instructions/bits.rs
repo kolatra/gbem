@@ -1,5 +1,5 @@
 use super::Instruction;
 
-pub fn get() -> Vec<Instruction> {
+pub const fn get() -> Vec<Instruction> {
     vec![]
 }

@@ -1,53 +1,34 @@
-use std::{
-    ops::Deref,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use crate::mem::Memory;
 
-use RamSize::*;
 pub enum RamSize {
-    KB2,
-    KB8,
-    KB32,
-    KB64,
-    KB128,
+    KB2 = 2048,
+    KB8 = 8192,
+    KB32 = 32_768,
+    KB64 = 65_536,
+    KB128 = 131_072,
 }
 
-impl Deref for RamSize {
-    type Target = usize;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            KB2 => &2048,
-            KB8 => &8192,
-            KB32 => &32768,
-            KB64 => &65536,
-            KB128 => &131072,
-        }
+impl From<RamSize> for u16 {
+    #[allow(clippy::cast_possible_truncation)]
+    fn from(size: RamSize) -> Self {
+        size as Self
     }
 }
 
-use RamStart::*;
 pub enum RamStart {
-    Cart,
-    VRam,
-    WRam,
-    ERam,
-    HRam,
+    Cart = 0x0000,
+    VRam = 0x8000,
+    WRam = 0xC000,
+    ERam = 0xE000,
+    HRam = 0xFF80,
 }
 
-impl Deref for RamStart {
-    type Target = u16;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Cart => &0x0000,
-            VRam => &0x8000,
-            WRam => &0xC000,
-            ERam => &0xE000,
-            HRam => &0xFF80,
-        }
+impl From<RamStart> for u16 {
+    #[allow(clippy::cast_possible_truncation)]
+    fn from(start: RamStart) -> Self {
+        start as Self
     }
 }
 
@@ -80,10 +61,10 @@ impl Memory for MemoryRegion {
 }
 
 impl MemoryRegion {
-    pub fn new(size: usize, start: u16) -> Arc<RwLock<Self>> {
+    pub fn new(size: u16, start: u16) -> Arc<RwLock<Self>> {
         let region = Self {
             start,
-            mem: vec![0; size],
+            mem: vec![0; size.into()],
         };
 
         Arc::new(RwLock::new(region))

@@ -243,7 +243,7 @@ macro_rules! load_16_into_8 {
             cycles: 2,
             length: 1,
             handler: |cpu| {
-                cpu.reg.$reg2 = cpu.reg.read_pair_sep($reg1).1;
+                cpu.reg.$reg2 = cpu.reg.read_pair($reg1) as u8;
             },
         }
     };

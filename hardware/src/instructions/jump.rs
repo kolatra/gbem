@@ -20,7 +20,7 @@ pub fn get() -> Vec<Instruction> {
             length: 2,
             handler: |cpu| {
                 let offset = cpu.read_next_byte();
-                cpu.reg.pc += offset as u16;
+                cpu.reg.pc += u16::from(offset);
             },
         },
         Instruction {
@@ -58,6 +58,7 @@ pub fn get() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 cpu.push_stack((cpu.reg.pc >> 8) as u8);
+                #[allow(clippy::cast_possible_truncation)]
                 cpu.push_stack(cpu.reg.pc as u8);
                 // cpu.reg.pc = 0x38;
                 cpu.reg.pc = 0x0138;

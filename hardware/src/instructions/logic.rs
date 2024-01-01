@@ -108,7 +108,9 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0xCE,
             cycles: 2,
             length: 2,
-            handler: |_cpu| todo!(),
+            handler: |cpu| {
+                cpu.add(cpu.read_byte(), true);
+            },
         },
     ]
 }

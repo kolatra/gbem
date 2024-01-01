@@ -1,6 +1,6 @@
 use crate::{
     instructions::{Instruction, INSTRUCTIONS},
-    mem::{Memory, MMU},
+    mem::MMU,
     reg::FlagBit,
     reg::Registers,
     GPU,
@@ -42,6 +42,7 @@ impl CPU {
         trace!("fetch");
         debug!("pc: {:#04x}", self.reg.pc);
         debug!("sp: {:#04x}", self.reg.sp);
+        trace!("stack: {:?}", self.mmu.read_range(0xFF80, 0xFFFE));
 
         let pc = self.reg.pc;
         let mut opcode = self.mmu.read(pc);
@@ -77,11 +78,14 @@ impl CPU {
     #[allow(clippy::significant_drop_tightening)] // It doesn't actually apply here
     fn dbg_print_bytes(&self, i: &Instruction) {
         let pc = self.reg.pc;
-        let cartridge = &self.mmu.cartridge.read().unwrap();
-        let ins_bytes = cartridge.read_range(pc, pc + i.length);
-        let out = ins_bytes
+        let Some(bytes) = self.mmu.read_range(pc, pc + i.length) else {
+            return;
+        };
+
+        let out = bytes
             .iter()
             .fold(String::new(), |s, b| s + &format!("{b:#02x} "));
+
         debug!(out);
     }
 
@@ -123,7 +127,7 @@ impl CPU {
         self.reg.f & mask > 0
     }
 
-    /// https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/
+    /// [](https://robdor.com/2016/08/10/gameboy-emulator-half-carry-flag/)
     #[rustfmt::skip]
     pub fn add(&mut self, b: u8, use_carry: bool) {
         use FlagBit::*;

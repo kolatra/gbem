@@ -4,6 +4,7 @@ use crate::{
 
 use super::Instruction;
 
+#[allow(clippy::cast_possible_truncation)]
 pub fn get() -> Vec<Instruction> {
     vec![
         ld_a8_a!(LDH_A8_A, 0xE0),
@@ -57,7 +58,7 @@ pub fn get() -> Vec<Instruction> {
             cycles: 2,
             length: 1,
             handler: |cpu| {
-                cpu.mmu.write(0xFF00 + cpu.reg.c as u16, cpu.reg.a);
+                cpu.mmu.write(0xFF00 + u16::from(cpu.reg.c), cpu.reg.a);
             },
         },
         Instruction {
@@ -97,16 +98,14 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x26,
             cycles: 2,
             length: 2,
-            handler: |cpu| {
-                cpu.reg.h = cpu.mmu.read(cpu.reg.pc + 1);
-            },
+            handler: |cpu| cpu.reg.h = cpu.mmu.read(cpu.reg.pc + 1),
         },
         Instruction {
             mnemonic: "LD (HL-), A",
             opcode: 0x32,
             cycles: 2,
             length: 1,
-            handler: |_cpu| todo!(),
+            handler: |cpu| cpu.mmu.write(cpu.reg.read_pair(Pair::HL) - 1, cpu.reg.a),
         },
         Instruction {
             mnemonic: "LD (HL), A",
