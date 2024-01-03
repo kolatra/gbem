@@ -3,7 +3,7 @@
 #![allow(dead_code, clippy::similar_names)]
 use std::{
     collections::HashMap,
-    io::{Read, Write},
+    io::{Read, Write}, fs::File, sync::Arc,
 };
 
 use clap::Parser;
@@ -94,7 +94,14 @@ fn parse_header(bytes: &[u8]) -> DMGHeader {
 }
 
 fn setup_logs() {
+    let file = File::create("debug.log");
+    let file = match file {
+        Ok(file) => file,
+        Err(error) => panic!("Error: {error:?}"),
+    };
+
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .with_writer(Arc::new(file))
         .with_line_number(true)
         .without_time()
         .with_max_level(tracing::Level::TRACE)

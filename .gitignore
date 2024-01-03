@@ -4,3 +4,4 @@ target/
 test-roms/
 roms/
 disassembler/DMG_ROM.txt
+debug.log
