@@ -238,6 +238,22 @@ macro_rules! load_16bit {
 }
 
 #[macro_export]
+macro_rules! load_16_bit {
+    ($mnemonic:ident, $opcode:expr, $reg:ident) => {
+        Instruction {
+            mnemonic: stringify!($mnemonic),
+            opcode: $opcode,
+            cycles: 3,
+            length: 3,
+            handler: |cpu| {
+                let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
+                cpu.reg.write_pair(Pair::$reg, d16);
+            },
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! load_16_into_8 {
     ($mnemonic:ident, $opcode:expr, $reg1:expr, $reg2:ident) => {
         Instruction {

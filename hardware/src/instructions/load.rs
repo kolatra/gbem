@@ -1,5 +1,5 @@
 use crate::{
-    ld_a8_a, load_16_into_8, load_16bit, load_8bit, load_a_8bit, load_imm, load_r_into_r, reg::Pair,
+    ld_a8_a, load_16_into_8, load_16bit, load_16_bit, load_8bit, load_a_8bit, load_imm, load_r_into_r, reg::Pair,
 };
 
 use super::Instruction;
@@ -36,6 +36,7 @@ pub fn get() -> Vec<Instruction> {
         load_8bit!(LD_B_C, 0x41, c, b),
         load_8bit!(LD_B_D, 0x42, d, b),
         load_16bit!(LD_SP_D16, 0x31, sp),
+        load_16_bit!(LD_BC_D16, 0x01, BC),
         load_16_into_8!(LD_L_HL, 0x6E, Pair::HL, l),
         load_16_into_8!(LD_HL_A, 0x77, Pair::HL, a),
         Instruction {
@@ -74,8 +75,7 @@ pub fn get() -> Vec<Instruction> {
             length: 3,
             handler: |cpu| {
                 let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
-                cpu.reg.d = (d16 >> 8) as u8;
-                cpu.reg.e = d16 as u8;
+                cpu.reg.write_pair(Pair::DE, d16);
             },
         },
         Instruction {

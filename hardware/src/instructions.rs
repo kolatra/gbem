@@ -14,6 +14,7 @@ pub static INSTRUCTIONS: LazyLock<Vec<Instruction>> = LazyLock::new(|| {
     v.append(&mut bits::get());
     v.append(&mut control::get());
     v.append(&mut jump::get());
+    v.append(&mut cb::get());
     v
 });
 
@@ -36,6 +37,7 @@ impl Instruction {
 }
 
 mod bits;
+mod cb;
 mod control;
 mod jump;
 mod load;

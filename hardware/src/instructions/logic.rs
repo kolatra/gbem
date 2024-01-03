@@ -109,7 +109,7 @@ pub fn get() -> Vec<Instruction> {
             cycles: 2,
             length: 2,
             handler: |cpu| {
-                cpu.add(cpu.read_byte(), true);
+                cpu.add(cpu.read_next_byte(), true);
             },
         },
         Instruction {
