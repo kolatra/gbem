@@ -1,11 +1,10 @@
 #![allow(dead_code)]
 #![warn(clippy::nursery, clippy::pedantic)]
-use std::process::exit;
-
 use clap::Parser;
-use tracing::warn;
+use tracing::{error, trace, warn};
 
-use hardware::{emu::new_emulation, LOG_LINES, SPAMMY_LOGS};
+use hardware::instructions::INSTRUCTIONS;
+use hardware::{emu::run_emulation, LOG_LINES, SPAMMY_LOGS};
 
 static DEFAULT_ROM: &str = "/home/tyler/dev/gbem/roms/Tetris.gb";
 
@@ -15,8 +14,26 @@ struct Args {
     rom: Option<String>,
 }
 
-fn main() {
+fn dbg_check_instructions() -> Result<(), &'static str> {
+    let mut buf = Vec::new();
+
+    for instruction in INSTRUCTIONS.iter() {
+        if buf.contains(&instruction.opcode) {
+            error!("{instruction:?} Defined twice");
+            return Err("Instruction already exists!");
+        }
+
+        buf.push(instruction.opcode);
+    }
+
+    trace!("All good");
+    Ok(())
+}
+
+fn main() -> Result<(), &'static str> {
     setup_logs();
+
+    dbg_check_instructions()?;
 
     let args = Args::parse();
     let rom = args.rom.unwrap_or_else(|| {
@@ -24,11 +41,11 @@ fn main() {
         DEFAULT_ROM.to_string()
     });
 
-    match new_emulation(&rom) {
-        Ok(()) => (),
+    match run_emulation(&rom) {
+        Ok(()) => Ok(()),
         Err(e) => {
             eprintln!("{e}");
-            exit(1)
+            Err("")
         }
     }
 }

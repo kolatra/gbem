@@ -106,9 +106,7 @@ impl MMU {
         let upper = self.read(address);
         let lower = self.read(address + 1);
 
-        // In 2-byte instructions, the first byte of immediate
-        // data is the lower byte and the second byte is
-        // the upper byte.
+        // In 2-byte instructions, the LSB is first.
         u16::from(lower) << 8 | u16::from(upper)
     }
 
@@ -131,7 +129,6 @@ impl MMU {
     }
 }
 
-
 pub fn load_rom(rom: &str, mmu: &MMU) -> std::io::Result<()> {
     // let rom = "./test-roms/blargg/mem_timing/mem_timing.gb";
     let bytes = fs::read(rom)?;
@@ -149,7 +146,6 @@ pub fn load_rom(rom: &str, mmu: &MMU) -> std::io::Result<()> {
 
     Ok(())
 }
-
 
 pub fn load_boot_rom(mmu: &MMU) {
     trace!("Loading boot ROM");

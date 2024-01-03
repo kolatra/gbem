@@ -4,7 +4,6 @@ use crate::{
 
 use super::Instruction;
 
-
 pub fn get() -> Vec<Instruction> {
     vec![
         ld_a8_a!(LDH_A8_A, 0xE0),
@@ -38,19 +37,26 @@ pub fn get() -> Vec<Instruction> {
         load_8bit!(LD_B_D, 0x42, d, b),
         load_16bit!(LD_SP_D16, 0x31, sp),
         load_16_into_8!(LD_L_HL, 0x6E, Pair::HL, l),
+        load_16_into_8!(LD_HL_A, 0x77, Pair::HL, a),
         Instruction {
             mnemonic: "LD (a16), A",
             opcode: 0xEA,
             cycles: 4,
             length: 3,
-            handler: |_| todo!(),
+            handler: |cpu| {
+                let nn = cpu.read_next_word();
+                cpu.mmu.write(nn, cpu.reg.a);
+            },
         },
         Instruction {
             mnemonic: "LD (a16), SP",
             opcode: 0x08,
             cycles: 5,
             length: 3,
-            handler: |_| todo!(),
+            handler: |cpu| {
+                let nn = cpu.read_next_word();
+                cpu.mmu.write_word(nn, cpu.reg.sp);
+            },
         },
         Instruction {
             mnemonic: "LD (C), A",
@@ -105,21 +111,22 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x32,
             cycles: 2,
             length: 1,
-            handler: |cpu| cpu.mmu.write(cpu.reg.read_pair(Pair::HL) - 1, cpu.reg.a),
-        },
-        Instruction {
-            mnemonic: "LD (HL), A",
-            opcode: 0x77,
-            cycles: 2,
-            length: 1,
-            handler: |_cpu| todo!(),
+            handler: |cpu| {
+                let hl = cpu.reg.read_pair(Pair::HL);
+                cpu.mmu.write(hl, cpu.reg.a);
+                cpu.reg.write_pair(Pair::HL, hl - 1);
+            },
         },
         Instruction {
             mnemonic: "LD (HL+), A",
             opcode: 0x22,
             cycles: 2,
             length: 1,
-            handler: |_cpu| todo!(),
+            handler: |cpu| {
+                let hl = cpu.reg.read_pair(Pair::HL);
+                cpu.mmu.write(hl, cpu.reg.a);
+                cpu.reg.write_pair(Pair::HL, hl + 1);
+            },
         },
         Instruction {
             mnemonic: "PUSH BC",
@@ -147,7 +154,10 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x73,
             cycles: 2,
             length: 1,
-            handler: |_cpu| todo!(),
+            handler: |cpu| {
+                let hl = cpu.reg.read_pair(Pair::HL);
+                cpu.mmu.write(hl, cpu.reg.e);
+            },
         },
     ]
 }

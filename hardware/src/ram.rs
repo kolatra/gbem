@@ -11,7 +11,6 @@ pub enum RamSize {
 }
 
 impl From<RamSize> for u16 {
-    
     fn from(size: RamSize) -> Self {
         size as Self
     }
@@ -26,7 +25,6 @@ pub enum RamStart {
 }
 
 impl From<RamStart> for u16 {
-    
     fn from(start: RamStart) -> Self {
         start as Self
     }

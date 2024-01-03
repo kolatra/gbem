@@ -51,7 +51,10 @@ macro_rules! dec_pair {
             opcode: $opcode,
             cycles: 2,
             length: 1,
-            handler: |_cpu| todo!(),
+            handler: |cpu| {
+                let curr = cpu.reg.read_pair(Pair::$pair);
+                cpu.reg.write_pair(Pair::$pair, curr - 1);
+            },
         }
     };
 }

@@ -38,6 +38,11 @@ impl CPU {
         value
     }
 
+    pub fn store_pc(&mut self) {
+        self.push_stack(self.reg.pc as u8);
+        self.push_stack((self.reg.pc >> 8) as u8);
+    }
+
     pub fn fetch(&self) -> Instruction {
         trace!("fetch");
         debug!("pc: {:#04x}", self.reg.pc);
@@ -80,7 +85,6 @@ impl CPU {
         self.mmu.read_word(self.reg.pc + 1)
     }
 
-    #[allow(clippy::significant_drop_tightening)] // It doesn't actually apply here
     fn dbg_print_bytes(&self, i: &Instruction) {
         let pc = self.reg.pc;
         let Some(bytes) = self.mmu.read_range(pc, pc + i.length) else {

@@ -112,6 +112,13 @@ pub fn get() -> Vec<Instruction> {
                 cpu.add(cpu.read_byte(), true);
             },
         },
+        Instruction {
+            mnemonic: "AND d8",
+            opcode: 0xE6,
+            cycles: 2,
+            length: 2,
+            handler: |cpu| cpu.reg.a &= cpu.read_next_byte(),
+        },
     ]
 }
 

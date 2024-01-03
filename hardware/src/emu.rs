@@ -12,7 +12,7 @@ use tracing::{error, trace};
 
 use crate::{cpu::CPU, mem::load_rom};
 
-pub fn new_emulation(rom: &str) -> crate::Result<()> {
+pub fn run_emulation(rom: &str) -> crate::Result<()> {
     let cpu = CPU::new();
 
     if let Err(e) = load_rom(rom, &cpu.mmu) {

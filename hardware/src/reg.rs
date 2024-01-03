@@ -39,7 +39,6 @@ impl Registers {
         }
     }
 
-    
     pub fn write_pair(&mut self, pair: Pair, value: u16) {
         let higher = (value >> 8) as u8;
         let lower = value as u8;

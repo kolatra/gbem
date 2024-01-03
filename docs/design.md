@@ -44,7 +44,7 @@ ff00 - ff7f ~ I/O Registers
 ff80 - fffe ~ High RAM
 ffff - ffff ~ Interrupt enable register
 
-Hardware interrupts:
+core interrupts:
  - Devices can ask the cpu to interrupt, which would invoke an interrupt handler (a function pointer stored in the heap probably)
  - the handlers seem to be part of the game ROM, so we map them into memory 
  - the CPU can halt for particular devices and continue for others that it's not interested in
