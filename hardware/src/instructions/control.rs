@@ -28,7 +28,10 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x3F,
             cycles: 1,
             length: 1,
-            handler: |_| todo!(),
+            handler: |cpu| {
+                let c = (cpu.reg.f & 8) > 0;
+                cpu.reg.f = u8::from(!c);
+            },
         },
         Instruction {
             mnemonic: "SCF",
