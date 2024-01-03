@@ -101,14 +101,14 @@ impl CPU {
     pub fn cycle(&mut self) {
         trace!("cycle");
         let instruction = self.fetch();
-
+        self.reg.pc += instruction.length;
+        
         debug!(
             "{} - cycles: {} length: {}",
             instruction.mnemonic, instruction.cycles, instruction.length
         );
         instruction.run(self);
 
-        self.reg.pc += instruction.length;
 
         self.print_reg();
     }
