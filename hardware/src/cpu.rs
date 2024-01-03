@@ -91,11 +91,11 @@ impl CPU {
             return;
         };
 
-        let out = bytes
+        let instruction_bytes = bytes
             .iter()
             .fold(String::new(), |s, b| s + &format!("{b:#02x} "));
 
-        debug!(out);
+        debug!(instruction_bytes);
     }
 
     pub fn cycle(&mut self) {
@@ -108,11 +108,7 @@ impl CPU {
         );
         instruction.run(self);
 
-        if instruction.length == 1 {
-            self.reg.pc += 2;
-        } else {
-            self.reg.pc += instruction.length;
-        }
+        self.reg.pc += instruction.length;
 
         self.print_reg();
     }
@@ -143,6 +139,7 @@ impl CPU {
         trace!("add");
         let a   = self.reg.a;
         let c   = u8::from(use_carry && self.is_set(C));
+        trace!(c);
         let hc  = (((a & 0xF) + (b & 0xF)) & 0x10) == 0x10;
         let r   = a.wrapping_add(b).wrapping_add(c);
         let a16 = u16::from(a);
