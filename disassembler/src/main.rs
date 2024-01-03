@@ -117,45 +117,54 @@ fn read_from_file(file: String) -> std::io::Result<Vec<u8>> {
 }
 
 fn disassemble(bytes: &[u8]) {
+    info!("Ending address: {:#04x}", bytes.len());
+
     let mut skip_count = 0;
-    let mut nop_count = 0;
+    let mut filtered_count = 0;
     let mut unknown_map = HashMap::new();
-    let mut in_nop = false;
+
+    let minify = false;
+    let mut minifying = false;
+
     for (i, byte) in bytes.iter().enumerate() {
         if skip_count > 0 {
             skip_count -= 1;
             continue;
         }
 
-        if *byte == 0x00 {
-            if in_nop {
-                nop_count += 1;
-            } else {
-                in_nop = true;
-                nop_count = 1;
+        if minify {
+            if i == bytes.len() - 1 && minifying {
+                info!("{:#04x}: {:#04x} x{}", i, bytes[i-1], filtered_count);
             }
-            continue;
-        } else if in_nop {
-            info!("{:#04x} NOP x{}", i, nop_count);
-            in_nop = false;
+
+            if *byte == 0x00 || *byte == 0xFF {
+                if minifying {
+                    if bytes[i-1] != *byte {
+                        info!("{:#04x}: {:#04x} x{}", i, bytes[i-1], filtered_count);
+                        filtered_count = 0;
+                    }
+
+                    filtered_count += 1;
+                } else {
+                    minifying = true;
+                    filtered_count = 1;
+                }
+
+                continue;
+            } else if minifying {
+                info!("{:#04x}: {:#04x} x{}", i, bytes[i-1], filtered_count);
+                minifying = false;
+                filtered_count = 0;
+            }
         }
 
         if *byte == 0xCB {
-            info!("CB prefix");
             info!("{:#04x} {:#04x}", byte, &bytes[i + 1]);
-            info!("--------");
             skip_count = 1;
             continue;
         }
 
         let instruction = INSTRUCTIONS.iter().find(|i| i.opcode == u32::from(*byte));
-
-        // Ignore RST 7 for now, it's filler
-        if let Some(instruction) = instruction
-            && instruction.opcode == 0xFF
-        {
-            continue;
-        }
 
         if let Some(ins) = instruction {
             let length = ins.length as usize;
@@ -174,11 +183,11 @@ fn disassemble(bytes: &[u8]) {
             };
 
             info!(
-                "{:#04x}: {} {:#02x} {}",
-                i, ins.mnemonic, ins.opcode, operands
+                "{:#04x}: {} {}",
+                i, ins.mnemonic, operands
             );
         } else {
-            error!("{:#04x}: {:#04x} Unknown", i, byte);
+            error!("{:#04x}: {:#04x} ?", i, byte);
             let entry = unknown_map.entry(byte).or_insert(0);
             *entry += 1;
         }
@@ -193,14 +202,14 @@ fn disassemble(bytes: &[u8]) {
 
         if counter == 4 {
             counter = 0;
-            warn!("{}", out);
+            //warn!("{}", out);
             out.clear();
             continue;
         }
 
         // print extras
         if i == unknown_map.len() - 1 {
-            warn!("{}", out);
+            //warn!("{}", out);
         }
     }
 }
