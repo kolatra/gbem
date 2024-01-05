@@ -7,8 +7,8 @@ use std::sync::LazyLock;
 use clap::Parser;
 use tracing::{error, trace, warn};
 
-use hardware::instructions::INSTRUCTIONS;
 use hardware::emu::run_emulation;
+use hardware::instructions::INSTRUCTIONS;
 
 static DEFAULT_ROM: &str = "./gbem/roms/Tetris.gb";
 
@@ -16,9 +16,9 @@ static DEFAULT_ROM: &str = "./gbem/roms/Tetris.gb";
 struct Args {
     #[clap(short, long)]
     rom: Option<String>,
-    
+
     #[clap(short)]
-    spam: bool
+    spam: bool,
 }
 
 static ARGS: LazyLock<Args> = LazyLock::new(Args::parse);

@@ -105,7 +105,7 @@ impl CPU {
     pub fn cycle(&mut self) {
         trace!("cycle");
         let instruction = self.fetch();
-        
+
         debug!(
             "{} - cycles: {} length: {}",
             instruction.mnemonic, instruction.cycles, instruction.length

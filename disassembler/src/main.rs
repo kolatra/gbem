@@ -3,7 +3,9 @@
 #![allow(dead_code, clippy::similar_names)]
 use std::{
     collections::HashMap,
-    io::{Read, Write}, fs::File, sync::Arc,
+    fs::File,
+    io::{Read, Write},
+    sync::Arc,
 };
 
 use clap::Parser;
@@ -134,13 +136,13 @@ fn disassemble(bytes: &[u8]) {
 
         if minify {
             if i == bytes.len() - 1 && minifying {
-                info!("{:#04x}: {:#04x} x{}", i, bytes[i-1], filtered_count);
+                info!("{:#04x}: {:#04x} x{}", i, bytes[i - 1], filtered_count);
             }
 
             if *byte == 0x00 || *byte == 0xFF {
                 if minifying {
-                    if bytes[i-1] != *byte {
-                        info!("{:#04x}: {:#04x} x{}", i, bytes[i-1], filtered_count);
+                    if bytes[i - 1] != *byte {
+                        info!("{:#04x}: {:#04x} x{}", i, bytes[i - 1], filtered_count);
                         filtered_count = 0;
                     }
 
@@ -152,7 +154,7 @@ fn disassemble(bytes: &[u8]) {
 
                 continue;
             } else if minifying {
-                info!("{:#04x}: {:#04x} x{}", i, bytes[i-1], filtered_count);
+                info!("{:#04x}: {:#04x} x{}", i, bytes[i - 1], filtered_count);
                 minifying = false;
                 filtered_count = 0;
             }
@@ -182,10 +184,7 @@ fn disassemble(bytes: &[u8]) {
                 String::new()
             };
 
-            info!(
-                "{:#04x}: {} {}",
-                i, ins.mnemonic, operands
-            );
+            info!("{:#04x}: {} {}", i, ins.mnemonic, operands);
         } else {
             error!("{:#04x}: {:#04x} ?", i, byte);
             let entry = unknown_map.entry(byte).or_insert(0);

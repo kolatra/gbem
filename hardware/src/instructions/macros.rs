@@ -6,7 +6,7 @@ macro_rules! inc_reg {
             opcode: $opcode,
             cycles: 1,
             length: 1,
-            handler: |cpu| { 
+            handler: |cpu| {
                 cpu.reg.$reg = cpu.reg.$reg.wrapping_add(1);
                 1
             },
@@ -156,7 +156,7 @@ macro_rules! sub {
             handler: |cpu| {
                 cpu.sub(cpu.reg.$reg, false);
                 1
-            }
+            },
         }
     };
 }

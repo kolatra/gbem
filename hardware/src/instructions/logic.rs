@@ -52,7 +52,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 cpu.reg.a |= cpu.reg.read_pair(Pair::HL) as u8;
                 1
-            }
+            },
         },
         and_reg!(AND_A, 0xA7, a),
         and_reg!(AND_B, 0xA0, b),

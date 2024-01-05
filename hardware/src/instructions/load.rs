@@ -1,5 +1,6 @@
 use crate::{
-    ld_a8_a, load_16_into_8, load_16bit, load_16_bit, load_8bit, load_a_8bit, load_imm, load_r_into_r, reg::Pair,
+    ld_a8_a, load_16_bit, load_16_into_8, load_16bit, load_8bit, load_a_8bit, load_imm,
+    load_r_into_r, reg::Pair,
 };
 
 use super::Instruction;
