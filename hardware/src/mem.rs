@@ -8,27 +8,6 @@ use tracing::{debug, error, info, trace};
 use crate::ram::{MemoryRegion, Region};
 use crate::{ram::RamSize::*, ram::RamStart::*, Interrupts, Timer, BOOT_ROM, NINTENDO_HEADER};
 
-pub trait Memory {
-    fn read(&self, address: u16) -> u8;
-    fn write(&mut self, address: u16, value: u8);
-    fn read_range(&self, start: u16, end: u16) -> &[u8];
-    fn write_range(&mut self, start: u16, end: u16, value: &[u8]);
-
-    fn read_word(&self, address: u16) -> u16 {
-        let upper = self.read(address);
-        let lower = self.read(address + 1);
-
-        u16::from(lower) << 8 | u16::from(upper)
-    }
-
-    fn write_word(&mut self, address: u16, value: u16) {
-        let upper = (value >> 8) as u8;
-        let lower = value as u8;
-        self.write(address, lower);
-        self.write(address + 1, upper);
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct MMU {
     cart: Region,

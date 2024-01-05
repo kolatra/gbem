@@ -1,7 +1,5 @@
 use std::sync::{Arc, RwLock};
 
-use crate::mem::Memory;
-
 pub enum RamSize {
     KB2 = 2048,
     KB8 = 8192,
@@ -38,22 +36,22 @@ pub struct MemoryRegion {
     mem: Vec<u8>,
 }
 
-impl Memory for MemoryRegion {
-    fn read(&self, address: u16) -> u8 {
+impl MemoryRegion {
+    pub fn read(&self, address: u16) -> u8 {
         let address = address - self.start;
         self.mem[address as usize]
     }
 
-    fn write(&mut self, address: u16, value: u8) {
+    pub fn write(&mut self, address: u16, value: u8) {
         let address = address - self.start;
         self.mem[address as usize] = value;
     }
 
-    fn read_range(&self, start: u16, end: u16) -> &[u8] {
+    pub fn read_range(&self, start: u16, end: u16) -> &[u8] {
         &self.mem[start as usize..end as usize]
     }
 
-    fn write_range(&mut self, start: u16, end: u16, value: &[u8]) {
+    pub fn write_range(&mut self, start: u16, end: u16, value: &[u8]) {
         self.mem[start as usize..end as usize].copy_from_slice(value);
     }
 }
