@@ -109,7 +109,6 @@ impl CPU {
         );
         instruction.run(self);
 
-
         self.print_reg();
     }
 

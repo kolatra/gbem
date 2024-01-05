@@ -26,7 +26,6 @@ pub type Result<T> = anyhow::Result<T>;
 // TODO have a config file or CLI input for these?
 pub const SPAMMY_LOGS: bool = true;
 pub const LOG_REGISTERS: bool = false;
-pub const LOG_LINES: bool = true;
 
 pub const CLOCK_FREQ: usize = 4_194_304; // 4.194304 MHz
 pub const MACHINE_FREQ: usize = 1_048_576; // 1.048576 MHz - 1/4 of the clock frequency

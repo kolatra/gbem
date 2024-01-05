@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 #![warn(clippy::nursery, clippy::pedantic)]
+
 use clap::Parser;
 use tracing::{error, trace, warn};
 
 use hardware::instructions::INSTRUCTIONS;
-use hardware::{emu::run_emulation, LOG_LINES, SPAMMY_LOGS};
+use hardware::{emu::run_emulation, SPAMMY_LOGS};
 
 static DEFAULT_ROM: &str = "/home/tyler/dev/gbem/roms/Tetris.gb";
 
@@ -58,9 +59,10 @@ fn setup_logs() {
     };
 
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+        .compact()
         .without_time()
-        .with_line_number(LOG_LINES)
-        .with_file(LOG_LINES)
+        .with_line_number(true)
+        .with_file(false)
         .with_max_level(level)
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
