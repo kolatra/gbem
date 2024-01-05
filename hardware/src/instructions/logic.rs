@@ -16,6 +16,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let cmp = cpu.reg.a - cpu.mmu.read(cpu.reg.pc + 1);
                 cpu.set_flag(FlagBit::Z, cmp == 0);
+                2
             },
         },
         inc_reg!(INC_A, 0x3C, a),
@@ -43,6 +44,16 @@ pub fn get() -> Vec<Instruction> {
         xor_reg!(XOR_E, 0xAB, e),
         xor_reg!(XOR_H, 0xAC, h),
         xor_reg!(XOR_L, 0xAD, l),
+        Instruction {
+            mnemonic: "XOR (HL)",
+            opcode: 0xAE,
+            cycles: 2,
+            length: 1,
+            handler: |cpu| {
+                cpu.reg.a |= cpu.reg.read_pair(Pair::HL) as u8;
+                1
+            }
+        },
         and_reg!(AND_A, 0xA7, a),
         and_reg!(AND_B, 0xA0, b),
         and_reg!(AND_C, 0xA1, c),
@@ -65,6 +76,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let cmp = cpu.reg.a - cpu.mmu.read(cpu.reg.read_pair(Pair::HL));
                 cpu.set_flag(FlagBit::Z, cmp == 0);
+                1
             },
         },
         add!(ADD_A_A, 0x87, a),
@@ -83,6 +95,7 @@ pub fn get() -> Vec<Instruction> {
                 let hl = cpu.reg.read_pair(Pair::HL);
                 let to_add = cpu.mmu.read(hl);
                 cpu.add(to_add, false);
+                1
             },
         },
         addc!(ADC_A_A, 0x8F, a),
@@ -112,6 +125,7 @@ pub fn get() -> Vec<Instruction> {
             length: 2,
             handler: |cpu| {
                 cpu.add(cpu.read_next_byte(), true);
+                2
             },
         },
         Instruction {
@@ -119,7 +133,10 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0xE6,
             cycles: 2,
             length: 2,
-            handler: |cpu| cpu.reg.a &= cpu.read_next_byte(),
+            handler: |cpu| {
+                cpu.reg.a &= cpu.read_next_byte();
+                2
+            },
         },
     ]
 }

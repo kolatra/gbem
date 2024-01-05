@@ -7,7 +7,7 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x00,
             cycles: 1,
             length: 1,
-            handler: |_| (),
+            handler: |_| 1,
         },
         Instruction {
             mnemonic: "EI",
@@ -31,6 +31,8 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let c = (cpu.reg.f & 8) > 0;
                 cpu.reg.f = u8::from(!c);
+
+                1
             },
         },
         Instruction {

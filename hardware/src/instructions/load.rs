@@ -23,6 +23,7 @@ pub fn get() -> Vec<Instruction> {
         load_r_into_r!(LD_B_A, 0x47, b, a),
         load_r_into_r!(LD_C_A, 0x4F, c, a),
         load_r_into_r!(LD_B_B, 0x50, b, b),
+        load_r_into_r!(LD_B_H, 0x44, b, h),
         load_a_8bit!(LD_A_A, 0x7F, a),
         load_a_8bit!(LD_A_B, 0x78, b),
         load_a_8bit!(LD_A_C, 0x79, c),
@@ -39,6 +40,7 @@ pub fn get() -> Vec<Instruction> {
         load_16_bit!(LD_BC_D16, 0x01, BC),
         load_16_into_8!(LD_L_HL, 0x6E, Pair::HL, l),
         load_16_into_8!(LD_HL_A, 0x77, Pair::HL, a),
+        load_16_into_8!(LD_DE_A, 0x12, Pair::DE, a),
         Instruction {
             mnemonic: "LD (a16), A",
             opcode: 0xEA,
@@ -47,6 +49,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let nn = cpu.read_next_word();
                 cpu.mmu.write(nn, cpu.reg.a);
+                3
             },
         },
         Instruction {
@@ -57,6 +60,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let nn = cpu.read_next_word();
                 cpu.mmu.write_word(nn, cpu.reg.sp);
+                3
             },
         },
         Instruction {
@@ -66,6 +70,7 @@ pub fn get() -> Vec<Instruction> {
             length: 1,
             handler: |cpu| {
                 cpu.mmu.write(0xFF00 + u16::from(cpu.reg.c), cpu.reg.a);
+                1
             },
         },
         Instruction {
@@ -76,6 +81,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
                 cpu.reg.write_pair(Pair::DE, d16);
+                3
             },
         },
         Instruction {
@@ -86,6 +92,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let to_write = cpu.reg.read_pair(Pair::DE);
                 cpu.reg.a = to_write as u8;
+                1
             },
         },
         Instruction {
@@ -97,6 +104,7 @@ pub fn get() -> Vec<Instruction> {
                 let d16 = cpu.mmu.read_word(cpu.reg.pc + 1);
                 cpu.reg.h = (d16 >> 8) as u8;
                 cpu.reg.l = d16 as u8;
+                3
             },
         },
         Instruction {
@@ -104,7 +112,10 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x26,
             cycles: 2,
             length: 2,
-            handler: |cpu| cpu.reg.h = cpu.mmu.read(cpu.reg.pc + 1),
+            handler: |cpu| {
+                cpu.reg.h = cpu.mmu.read(cpu.reg.pc + 1);
+                2
+            },
         },
         Instruction {
             mnemonic: "LD (HL-), A",
@@ -115,6 +126,7 @@ pub fn get() -> Vec<Instruction> {
                 let hl = cpu.reg.read_pair(Pair::HL);
                 cpu.mmu.write(hl, cpu.reg.a);
                 cpu.reg.write_pair(Pair::HL, hl - 1);
+                1
             },
         },
         Instruction {
@@ -126,6 +138,7 @@ pub fn get() -> Vec<Instruction> {
                 let hl = cpu.reg.read_pair(Pair::HL);
                 cpu.mmu.write(hl, cpu.reg.a);
                 cpu.reg.write_pair(Pair::HL, hl + 1);
+                1
             },
         },
         Instruction {
@@ -147,7 +160,10 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x66,
             cycles: 2,
             length: 1,
-            handler: |cpu| cpu.reg.h = cpu.reg.read_pair(Pair::HL) as u8,
+            handler: |cpu| {
+                cpu.reg.h = cpu.reg.read_pair(Pair::HL) as u8;
+                1
+            },
         },
         Instruction {
             mnemonic: "LD (HL), E",
@@ -157,6 +173,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let hl = cpu.reg.read_pair(Pair::HL);
                 cpu.mmu.write(hl, cpu.reg.e);
+                1
             },
         },
     ]

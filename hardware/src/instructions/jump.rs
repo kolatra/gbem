@@ -13,6 +13,7 @@ pub fn get() -> Vec<Instruction> {
                 let low = cpu.reg.pc;
                 let high = cpu.reg.pc + 1;
                 cpu.reg.pc = (high << 8) | low;
+                0
             },
         },
         Instruction {
@@ -23,6 +24,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let offset = cpu.read_next_byte();
                 cpu.reg.pc += u16::from(offset);
+                0
             },
         },
         Instruction {
@@ -31,9 +33,12 @@ pub fn get() -> Vec<Instruction> {
             cycles: 3, // 2 if not taken
             length: 2,
             handler: |cpu| {
-                if !cpu.reg.is_set(FlagBit::Z) {
+                if cpu.reg.is_set(FlagBit::Z) {
+                    2
+                } else {
                     let offset = cpu.read_next_byte();
                     cpu.reg.pc += u16::from(offset);
+                    0
                 }
             },
         },
@@ -52,6 +57,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 cpu.store_pc();
                 cpu.reg.pc = cpu.read_next_word();
+                0
             },
         },
         Instruction {
@@ -63,6 +69,9 @@ pub fn get() -> Vec<Instruction> {
                 if cpu.reg.is_set(FlagBit::Z) {
                     cpu.store_pc();
                     cpu.reg.pc = cpu.read_next_word();
+                    0
+                } else {
+                    3
                 }
             },
         },
@@ -77,6 +86,9 @@ pub fn get() -> Vec<Instruction> {
                     cpu.push_stack((pc >> 8) as u8);
                     cpu.push_stack(pc as u8);
                     cpu.reg.pc = cpu.read_next_word();
+                    0
+                } else {
+                    3
                 }
             },
         },
@@ -90,6 +102,7 @@ pub fn get() -> Vec<Instruction> {
                 cpu.push_stack(cpu.reg.pc as u8);
                 // cpu.reg.pc = 0x38;
                 cpu.reg.pc = 0x0138;
+                0
             },
         },
         Instruction {
@@ -98,11 +111,14 @@ pub fn get() -> Vec<Instruction> {
             cycles: 5, // 2 if not taken
             length: 1,
             handler: |cpu| {
-                if !cpu.reg.is_set(FlagBit::Z) {
+                if cpu.reg.is_set(FlagBit::Z) {
+                    1
+                } else {
                     let b2 = cpu.pop_stack();
                     let b1 = cpu.pop_stack();
                     let new_pc = u16::from(b1) << 8 | u16::from(b2);
                     cpu.reg.pc = new_pc;
+                    0
                 }
             },
         },
@@ -116,6 +132,7 @@ pub fn get() -> Vec<Instruction> {
                 let b1 = cpu.pop_stack();
                 let new_pc = u16::from(b1) << 8 | u16::from(b2);
                 cpu.reg.pc = new_pc;
+                0
             },
         },
         Instruction {
@@ -129,6 +146,9 @@ pub fn get() -> Vec<Instruction> {
                     let b1 = cpu.pop_stack();
                     let new_pc = u16::from(b1) << 8 | u16::from(b2);
                     cpu.reg.pc = new_pc;
+                    0
+                } else {
+                    1
                 }
             },
         },
@@ -138,11 +158,14 @@ pub fn get() -> Vec<Instruction> {
             cycles: 5, // 2 if not taken
             length: 1,
             handler: |cpu| {
-                if !cpu.reg.is_set(FlagBit::C) {
+                if cpu.reg.is_set(FlagBit::C) {
+                    1
+                } else {
                     let b2 = cpu.pop_stack();
                     let b1 = cpu.pop_stack();
                     let new_pc = u16::from(b1) << 8 | u16::from(b2);
                     cpu.reg.pc = new_pc;
+                    0
                 }
             },
         },
@@ -157,6 +180,9 @@ pub fn get() -> Vec<Instruction> {
                     let b1 = cpu.pop_stack();
                     let new_pc = u16::from(b1) << 8 | u16::from(b2);
                     cpu.reg.pc = new_pc;
+                    0
+                } else {
+                    1
                 }
             },
         },

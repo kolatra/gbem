@@ -27,12 +27,12 @@ pub struct Instruction {
     pub cycles: u16,
     /// Length in bytes
     pub length: u16,
-    handler: fn(cpu: &mut CPU),
+    handler: fn(cpu: &mut CPU) -> u16,
 }
 
 impl Instruction {
-    pub fn run(&self, cpu: &mut CPU) {
-        (self.handler)(cpu);
+    pub fn run(&self, cpu: &mut CPU) -> u16 {
+        (self.handler)(cpu)
     }
 }
 
