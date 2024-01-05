@@ -43,6 +43,10 @@ impl CPU {
         self.push_stack((self.reg.pc >> 8) as u8);
     }
 
+    pub fn pop_pc(&mut self) -> u16 {
+        u16::from(self.pop_stack()) << 8 | u16::from(self.pop_stack())
+    }
+
     pub fn fetch(&self) -> Instruction {
         trace!("fetch");
         debug!("pc: {:#04x}", self.reg.pc);

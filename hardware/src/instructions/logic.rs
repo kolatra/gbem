@@ -80,7 +80,9 @@ pub fn get() -> Vec<Instruction> {
             cycles: 2,
             length: 1,
             handler: |cpu| {
-                cpu.add(cpu.mmu.read(cpu.reg.read_pair(Pair::HL)), false);
+                let hl = cpu.reg.read_pair(Pair::HL);
+                let to_add = cpu.mmu.read(hl);
+                cpu.add(to_add, false);
             },
         },
         addc!(ADC_A_A, 0x8F, a),

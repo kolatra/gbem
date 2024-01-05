@@ -30,7 +30,12 @@ pub fn get() -> Vec<Instruction> {
             opcode: 0x20,
             cycles: 3, // 2 if not taken
             length: 2,
-            handler: |_cpu| todo!(),
+            handler: |cpu| {
+                if !cpu.reg.is_set(FlagBit::Z) {
+                    let offset = cpu.read_next_byte();
+                    cpu.reg.pc += u16::from(offset);
+                }
+            },
         },
         Instruction {
             mnemonic: "JR Z, s8",

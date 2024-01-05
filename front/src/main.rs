@@ -1,19 +1,27 @@
 #![allow(dead_code)]
+#![feature(lazy_cell)]
 #![warn(clippy::nursery, clippy::pedantic)]
+
+use std::sync::LazyLock;
 
 use clap::Parser;
 use tracing::{error, trace, warn};
 
 use hardware::instructions::INSTRUCTIONS;
-use hardware::{emu::run_emulation, SPAMMY_LOGS};
+use hardware::emu::run_emulation;
 
-static DEFAULT_ROM: &str = "/home/tyler/dev/gbem/roms/Tetris.gb";
+static DEFAULT_ROM: &str = "./gbem/roms/Tetris.gb";
 
 #[derive(Debug, Parser)]
 struct Args {
     #[clap(short, long)]
     rom: Option<String>,
+    
+    #[clap(short)]
+    spam: bool
 }
+
+static ARGS: LazyLock<Args> = LazyLock::new(Args::parse);
 
 fn dbg_check_instructions() -> Result<(), &'static str> {
     let mut buf = Vec::new();
@@ -36,13 +44,13 @@ fn main() -> Result<(), &'static str> {
 
     dbg_check_instructions()?;
 
-    let args = Args::parse();
-    let rom = args.rom.unwrap_or_else(|| {
+    let default = DEFAULT_ROM.to_string();
+    let rom = ARGS.rom.as_ref().unwrap_or_else(|| {
         warn!("Using default rom: {}", DEFAULT_ROM);
-        DEFAULT_ROM.to_string()
+        &default
     });
 
-    match run_emulation(&rom) {
+    match run_emulation(rom) {
         Ok(()) => Ok(()),
         Err(e) => {
             eprintln!("{e}");
@@ -52,7 +60,7 @@ fn main() -> Result<(), &'static str> {
 }
 
 fn setup_logs() {
-    let level = if SPAMMY_LOGS {
+    let level = if ARGS.spam {
         tracing::Level::TRACE
     } else {
         tracing::Level::DEBUG
@@ -65,5 +73,6 @@ fn setup_logs() {
         .with_file(false)
         .with_max_level(level)
         .finish();
+
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }

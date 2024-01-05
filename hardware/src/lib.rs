@@ -23,8 +23,6 @@ pub mod reg;
 
 pub type Result<T> = anyhow::Result<T>;
 
-// TODO have a config file or CLI input for these?
-pub const SPAMMY_LOGS: bool = true;
 pub const LOG_REGISTERS: bool = false;
 
 pub const CLOCK_FREQ: usize = 4_194_304; // 4.194304 MHz
