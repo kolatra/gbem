@@ -86,7 +86,7 @@ impl MMU {
         let lower = self.read(address + 1);
 
         // In 2-byte instructions, the LSB is first.
-        u16::from(upper) << 8 | u16::from(lower)
+        u16::from(lower) << 8 | u16::from(upper)
     }
 
     pub fn write_word(&mut self, address: u16, value: u16) {
