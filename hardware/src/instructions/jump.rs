@@ -12,6 +12,7 @@ pub fn get() -> Vec<Instruction> {
             handler: |cpu| {
                 let low = cpu.reg.pc;
                 let high = cpu.reg.pc + 1;
+                cpu.store_pc();
                 cpu.reg.pc = (high << 8) | low;
                 0
             },
