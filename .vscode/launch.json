@@ -75,7 +75,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["-r", "./roms/Tetris.gb", "-s"],
+            "args": ["-r", "${workspaceFolder}/roms/Tetris.gb", "-s"],
             "cwd": "${workspaceFolder}"
         },
         {
