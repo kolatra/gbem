@@ -193,3 +193,21 @@ impl CPU {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_push() {
+        let mut cpu = CPU::new();
+
+        cpu.store_pc();
+
+        assert!(cpu.reg.sp == 0xFFFE - 2);
+        let pop = cpu.pop_stack();
+        assert!(pop == 0x01);
+        let pop = cpu.pop_stack();
+        assert!(pop == 0x00);
+    }
+}
