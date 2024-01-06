@@ -205,9 +205,6 @@ mod tests {
         cpu.store_pc();
 
         assert!(cpu.reg.sp == 0xFFFE - 2);
-        let pop = cpu.pop_stack();
-        assert!(pop == 0x01);
-        let pop = cpu.pop_stack();
-        assert!(pop == 0x00);
+        assert_eq!(cpu.pop_pc(), 0x0100);
     }
 }
