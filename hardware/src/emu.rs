@@ -26,10 +26,7 @@ pub fn run_emulation(rom: &str) -> crate::Result<()> {
 
     loop {
         match r_cpu.recv() {
-            Ok(_cpu_state) => {
-                trace!("received new cpu state");
-                trace!("sending new state to the gpu");
-            }
+            Ok(_cpu_state) => {}
 
             Err(e) => {
                 error!("cpu thread died \n{e}");
@@ -47,7 +44,7 @@ fn setup_thread(cpu: Arc<RwLock<CPU>>) -> Receiver<Arc<RwLock<CPU>>> {
         let _ = cpu.write().map(|mut c| c.cycle());
 
         cpu_sender.send(Arc::clone(&cpu)).unwrap();
-        trace!("sent new cpu state");
+        trace!("cycle finished");
 
         thread::sleep(Duration::from_millis(1000 / crate::FPS as u64));
     });

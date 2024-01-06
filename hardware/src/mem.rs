@@ -41,11 +41,15 @@ impl MMU {
 #[allow(unused)]
 impl MMU {
     pub fn read(&self, address: u16) -> u8 {
-        debug!("read: {:#04x}", address);
-        self.get_region(address).map_or(0, |lock| {
-            let region = lock.read().unwrap();
-            region.read(address)
-        })
+        self.get_region(address)
+            .map_or(0, |lock| match lock.read() {
+                Ok(region) => {
+                    let data = region.read(address);
+                    debug!("read {:#04x} from {:#04x}", data, address);
+                    data
+                }
+                Err(_poisoned) => 0,
+            })
     }
 
     pub fn write(&mut self, address: u16, value: u8) {
@@ -85,7 +89,8 @@ impl MMU {
         let upper = self.read(address);
         let lower = self.read(address + 1);
 
-        // In 2-byte instructions, the LSB is first.
+        // in two byte instructions, the LSB is
+        // the immediate byte following PC
         u16::from(lower) << 8 | u16::from(upper)
     }
 
@@ -109,7 +114,6 @@ impl MMU {
 }
 
 pub fn load_rom(rom: &str, mmu: &MMU) -> std::io::Result<()> {
-    // let rom = "./test-roms/blargg/mem_timing/mem_timing.gb";
     let bytes = fs::read(rom)?;
 
     if bytes.len() < 0x0133 || bytes[0x0104..=0x0133] != NINTENDO_HEADER {
