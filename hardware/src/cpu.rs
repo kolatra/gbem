@@ -29,12 +29,14 @@ impl CPU {
         trace!("push_stack");
         self.reg.sp -= 1;
         self.mmu.write(self.reg.sp, value);
+        trace!("stack: {:?}", self.mmu.read_range(0xFF80, 0xFFFE));
     }
 
     pub fn pop_stack(&mut self) -> u8 {
         trace!("pop_stack");
         let value = self.mmu.read(self.reg.sp);
         self.reg.sp += 1;
+        trace!("stack: {:?}", self.mmu.read_range(0xFF80, 0xFFFE));
         value
     }
 
@@ -51,7 +53,6 @@ impl CPU {
         trace!("fetch");
         debug!("pc: {:#04x}", self.reg.pc);
         debug!("sp: {:#04x}", self.reg.sp);
-        trace!("stack: {:?}", self.mmu.read_range(0xFF80, 0xFFFE));
 
         let pc = self.reg.pc;
         let mut opcode = self.mmu.read(pc);
@@ -103,7 +104,7 @@ impl CPU {
     }
 
     pub fn cycle(&mut self) {
-        trace!("cycle");
+        trace!("cycle====================================");
         let instruction = self.fetch();
 
         debug!(
